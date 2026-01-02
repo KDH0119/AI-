@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Suite Hub</title>
+    <style>
+        :root {
+            --bg: white;
+            --panel: white;
+            --border: #1f2937;
+            --text: black;
+            --muted: blackf;
+            --accent: black;
+            --card: white;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 20% 20%, rgba(37,99,235,0.08), transparent 40%), radial-gradient(circle at 80% 0%, rgba(59,130,246,0.12), transparent 35%), var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 16px;
+        }
+        .container {
+            width: 100%;
+            max-width: 960px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        h1 { font-size: 28px; letter-spacing: 0.01em; }
+        .tagline { color: var(--muted); font-size: 14px; line-height: 1.6; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            padding: 18px;
+            border-radius: 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+        .card h2 { font-size: 18px; }
+        .card p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+        .card .cta {
+            margin-top: auto;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            font-size: 13px;
+        }
+        .footer {
+            margin-top: 18px;
+            font-size: 12px;
+            color: var(--muted);
+            text-align: right;
+        }
+        @media (max-width: 640px) {
+            .container { padding: 20px; }
+            .header { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="grid">
+            <a class="card" href="chat-index.html">
+                <h2>AI CHAT</h2>
+                <p>AI CHAT 프롬프트를 제작/개발하여 플레이·테스트</p>
+                <span class="cta">바로 가기 →</span>
+            </a>
+
+            <a class="card" href="story-maker.html">
+                <h2>스토리 제작 통합 제작기</h2>
+                <p>스토리 플롯·캐릭터·세계관을 한 번에 설계하는 통합 제작 워크플로우.</p>
+                <span class="cta">바로 가기 →</span>
+            </a>
+
+            <a class="card" href="batch-generator.html">
+                <h2>NovelAI 배치 생성</h2>
+                <p>연속/메모 모드로 이미지 생성, 레퍼런스·varietyPlus·다운로드 지원.</p>
+                <span class="cta">바로 가기 →</span>
+            </a>
+        </div>
+
+        <div id="api-guide" style="margin-top:18px; background: transparent; border:none; box-shadow:none; padding:0;">
+            <div style="background: var(--card); border:1px solid var(--border); border-radius:12px; padding:20px;">
+                <h2 style="margin-bottom:12px;">API Key 발급 가이드</h2>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap:16px;">
+                    <div style="border:1px solid var(--border); border-radius:10px; padding:14px;">
+                        <h3 style="margin-bottom:8px;">1. Google Gemini API Key</h3>
+                        <ol style="color: var(--muted); line-height:1.5; padding-left:18px;">
+                            <li>AI STUDIO 접속: <a href="https://aistudio.google.com/api-keys" target="_blank" style="color: var(--accent);">https://aistudio.google.com/api-keys</a></li>
+                            <li>왼쪽 하단 <b>Get API Key</b> 클릭</li>
+                            <li><b>API 키 만들기</b> 클릭</li>
+                            <li>프로젝트 선택 → <b>Create project</b> → 이름 입력 후 생성</li>
+                            <li>키 이름 지정 후 생성</li>
+                            <li><b>결제 설정</b> 클릭</li>
+                            <li>결제 정보, 카드 정보 등 입력 후 가입</li>
+                            <li>생성된 API KEY를 ai_chat_main 사이트 입력란에 붙여넣기</li>
+                            <li>완료</li>
+                        </ol>
+                    </div>
+                    <div style="border:1px solid var(--border); border-radius:10px; padding:14px;">
+                        <h3 style="margin-bottom:8px;">2. NovelAI API Key</h3>
+                        <ol style="color: var(--muted); line-height:1.5; padding-left:18px;">
+                            <li>NovelAI 사이트 접속: <a href="https://novelai.net/" target="_blank" style="color: var(--accent);">https://aistudio.google.com/api-keys</a></li>
+                            <li>Login</li>
+                            <li><b>User Setting → Account</b> 클릭</li>
+                            <li><b>Get Persistent API Token</b> 클릭</li>
+                            <li>발급받은 API Key 복사</li>
+                            <li>원하는 입력란에 붙여넣고 사용</li>
+                            <li>완료</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Maker</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable.css">
+    <link rel="stylesheet" href="story-maker.css">
+</head>
+<body>
+    <div class="story-app">
+        <header class="top-bar">
+            <div class="api-panel">
+                <div class="api-group">
+                    <label for="globalGoogleApiKey">Gemini API Key</label>
+                    <div class="api-row">
+                        <input type="password" id="globalGoogleApiKey" placeholder="AIza..." autocomplete="off">
+                        <button id="saveGlobalGoogleKey" class="btn btn-dark">저장</button>
+                    </div>
+                    <div class="api-status" id="googleKeyStatus"></div>
+                </div>
+                <div class="api-group">
+                    <label for="globalNovelApiKey">NovelAI API Key</label>
+                    <div class="api-row">
+                        <input type="password" id="globalNovelApiKey" placeholder="pst-..." autocomplete="off">
+                        <button id="saveGlobalNovelKey" class="btn btn-dark">저장</button>
+                    </div>
+                    <div class="api-status" id="novelKeyStatus"></div>
+                </div>
+            </div>
+            <div class="hero">
+                <span class="eyebrow">Story Maker</span>
+                <h1>스토리 제작 통합 제작기</h1>
+                <p>템플릿 결합, 이미지 생성, 합성, 노트까지 한 공간에서 관리합니다.</p>
+            </div>
+        </header>
+
+        <nav class="menu-bar">
+            <button class="menu-item active" data-view="prompt">프롬프트</button>
+            <button class="menu-item" data-view="story">키워드북 목록</button>
+            <button class="menu-item" data-view="start">이미지 생성</button>
+            <button class="menu-item" data-view="media">배경 합성</button>
+        </nav>
+
+        <main class="content">
+            <section id="view-prompt" class="view active">
+                <div class="view-header">
+                    <h2>프롬프트 템플릿 결합</h2>
+                    <p>템플릿을 선택하고 입력한 프롬프트를 결합해 완성본을 생성합니다.</p>
+                </div>
+                <div class="prompt-grid">
+                    <div class="card">
+                        <div class="card-title">템플릿 선택</div>
+                        <label class="field-label" for="templateSelect">템플릿 선택</label>
+                        <select id="templateSelect" class="input-field">
+                            <option value="roleplay_v1">롤플레잉 v1</option>
+                            <option value="roleplay_v2">롤플레잉 v2</option>
+                            <option value="roleplay_v3">롤플레잉 v3</option>
+                            <option value="simulation_v1">시뮬레이션 v1</option>
+                            <option value="simulation_v2">시뮬레이션 v2</option>
+                            <option value="simulation_v3">시뮬레이션 v3</option>
+                        </select>
+                        <label class="field-label" for="templatePromptInput">이야기</label>
+                        <textarea id="templatePromptInput" class="input-area" rows="10" placeholder="세계관, 장르, 캐릭터, 서사 등을 입력하세요."></textarea>
+                        <p class="helper-text">템플릿은 가이드라인으로 전달되고, 이야기를 바탕으로 AI가 완성 프롬프트를 생성합니다.</p>
+                        <p class="helper-text">요청 문장: "이 이야기를 이 템플릿 프롬프트에 맞춰서 완벽하게 다시 짜줘."</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">완성된 프롬프트</div>
+                        <div class="output-actions">
+                            <button id="generateFinalPrompt" class="btn btn-dark">AI 생성</button>
+                            <button id="copyFinalPrompt" class="btn btn-outline">복사</button>
+                        </div>
+                        <textarea id="finalPromptOutput" class="output-area" rows="14" readonly></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-story" class="view">
+                <div class="view-header">
+                    <h2>키워드북 목록 노트</h2>
+                    <p>노트를 추가해 키워드북을 정리하세요. 제목과 내용은 직접 수정하면 됩니다.</p>
+                </div>
+                <div class="notes-grid">
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                    <div class="note-card">
+                        <div class="note-top">
+                            <h3 class="note-title">노트 제목</h3>
+                            <button class="note-copy" data-copy-note>복사</button>
+                        </div>
+                        <p class="note-body">노트 내용을 입력하세요.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-start" class="view">
+                <div class="view-header">
+                    <h2>이미지 생성</h2>
+                    <p>메모장 기반 생성 기능만 가져와 단순화된 워크플로우로 제공합니다.</p>
+                </div>
+                <div class="generator-layout" id="memoGenerator">
+                    <aside class="generator-panel generator-settings">
+                        <div class="generator-section">
+                            <h3>프롬프트</h3>
+                            <label class="field-label" for="memoArtistTags">작가/화풍 태그</label>
+                            <textarea id="memoArtistTags" class="input-area" rows="4" placeholder="artist name, style..."></textarea>
+                            <label class="field-label" for="memoNegativeTags">네거티브 태그</label>
+                            <textarea id="memoNegativeTags" class="input-area" rows="4" placeholder="low quality, bad anatomy..."></textarea>
+                            <label class="field-label" for="memoCharacterTags">캐릭터 1 태그</label>
+                            <textarea id="memoCharacterTags" class="input-area" rows="4" placeholder="1girl, long hair, blue eyes..."></textarea>
+                        </div>
+                        <div class="generator-section">
+                            <h3>생성 설정</h3>
+                            <label class="field-label" for="memoImageSize">해상도</label>
+                            <select id="memoImageSize" class="input-field">
+                                <option value="832x1216">Portrait (832 × 1216)</option>
+                                <option value="1216x832">Landscape (1216 × 832)</option>
+                                <option value="1024x1024">Square (1024 × 1024)</option>
+                            </select>
+                            <div class="delay-row">
+                                <label class="field-label" for="memoRequestDelay">딜레이</label>
+                                <div class="delay-control">
+                                    <input type="range" id="memoRequestDelay" min="0" max="10" step="0.1" value="0">
+                                    <span id="memoDelayValue">0s</span>
+                                </div>
+                            </div>
+                            <button id="openMemoAdvancedSettings" class="btn btn-outline btn-block">고급 설정</button>
+                        </div>
+                    </aside>
+
+                    <section class="generator-panel generator-preview">
+                        <div class="generator-preview-header">
+                            <div>
+                                <h3>생성 결과</h3>
+                                <span id="memoStatus" class="memo-status"></span>
+                            </div>
+                            <div class="preview-actions">
+                                <button id="memoGenerateAll" class="btn btn-dark">전체 생성</button>
+                                <button id="memoDownloadAll" class="btn btn-outline" disabled>전체 저장</button>
+                            </div>
+                        </div>
+                        <div id="memoProgressSection" class="memo-progress is-hidden">
+                            <div class="memo-progress-bar">
+                                <div id="memoProgressFill" class="memo-progress-fill"></div>
+                            </div>
+                            <div class="memo-progress-info">
+                                <span id="memoLoadingText">준비 중...</span>
+                                <span id="memoProgressText">0 / 0</span>
+                            </div>
+                        </div>
+                        <div id="memoPreviewContainer" class="memo-preview-grid">
+                            <div class="memo-empty">
+                                <p>메모장을 생성한 뒤 전체 생성을 눌러주세요.</p>
+                            </div>
+                        </div>
+                        <div id="memoLoadingOverlay" class="memo-loading is-hidden">
+                            <div class="memo-spinner"></div>
+                        </div>
+                    </section>
+
+                    <aside class="generator-panel generator-memo">
+                        <div class="generator-section-header">
+                            <div>
+                                <h3>메모장</h3>
+                                <p>메모장을 추가하고 상황 태그를 관리하세요.</p>
+                            </div>
+                            <div class="memo-header-actions">
+                                <button id="memoImportJson" class="btn-icon" title="가져오기">📂</button>
+                                <button id="memoExportJson" class="btn-icon" title="내보내기">💾</button>
+                                <input type="file" id="memoJsonFile" accept=".json" hidden>
+                            </div>
+                        </div>
+                        <div class="memo-controls">
+                            <span id="memoCountBadge" class="memo-count">0/200</span>
+                            <button id="memoAddPad" class="btn btn-dark btn-sm">+ 새 메모</button>
+                            <button id="memoOpenAll" class="btn btn-outline btn-sm">전체보기</button>
+                        </div>
+                        <div id="memoPadList" class="memo-list"></div>
+                    </aside>
+                </div>
+            </section>
+
+            <section id="view-media" class="view">
+                <div class="view-header">
+                    <h2>배경 합성</h2>
+                    <p>Gemini 배경 합성 기능과 동일하게 동작합니다.</p>
+                </div>
+                <div class="compose-layout">
+                    <div class="compose-left">
+                        <div class="compose-section">
+                            <div class="compose-section-header">
+                                <div>
+                                    <h3>배경 이미지</h3>
+                                    <p>1장만 선택</p>
+                                </div>
+                                <div class="compose-actions">
+                                    <input type="file" id="composeBgInput" accept="image/*" hidden>
+                                    <button id="btnAttachComposeBg" class="btn btn-outline btn-sm">배경 업로드</button>
+                                    <button id="btnRemoveComposeBg" class="btn btn-outline btn-sm">지우기</button>
+                                </div>
+                            </div>
+                            <div id="composeBgPreview" class="compose-preview-box">
+                                <span class="muted">배경 이미지가 없습니다.</span>
+                            </div>
+                        </div>
+
+                        <div class="compose-section">
+                            <div class="compose-section-header">
+                                <div>
+                                    <h3>캐릭터 이미지</h3>
+                                    <p>여러 장 선택 가능</p>
+                                </div>
+                                <div class="compose-actions">
+                                    <input type="file" id="composeCharInput" accept="image/*" multiple hidden>
+                                    <button id="btnAttachComposeChars" class="btn btn-outline btn-sm">캐릭터 업로드</button>
+                                    <button id="btnClearComposeChars" class="btn btn-outline btn-sm">지우기</button>
+                                </div>
+                            </div>
+                            <div id="composeCharList" class="compose-thumb-list">
+                                <span class="muted">캐릭터 이미지를 추가해주세요.</span>
+                            </div>
+                        </div>
+
+                        <div class="compose-section">
+                            <label class="field-label" for="composeImageSize">이미지 사이즈</label>
+                            <select id="composeImageSize" class="input-field">
+                                <option value="default">기본 (설정 안함)</option>
+                                <option value="1K">1K</option>
+                                <option value="2K">2K</option>
+                                <option value="4K">4K</option>
+                            </select>
+                            <label class="field-label" for="composePrompt">합성 프롬프트</label>
+                            <textarea id="composePrompt" class="input-area" rows="4" placeholder="배경과 캐릭터를 자연스럽게 합성해줘. 캐릭터의 포즈와 스타일은 유지하고, 배경 조명에 맞춰 조명을 보정해줘."></textarea>
+                            <div class="compose-controls">
+                                <button id="btnGenerateCompose" class="btn btn-dark">합성 시작</button>
+                                <button id="btnStopCompose" class="btn btn-outline btn-sm">중단</button>
+                                <button id="btnDownloadAllCompose" class="btn btn-outline btn-sm">전체 저장</button>
+                            </div>
+                            <p id="composeStatus" class="compose-status"></p>
+                        </div>
+                    </div>
+
+                    <div class="compose-right">
+                        <div class="compose-section-header">
+                            <div>
+                                <h3>합성 결과</h3>
+                                <p>캐릭터 수만큼 순차 생성</p>
+                            </div>
+                        </div>
+                        <div id="composeResultList" class="compose-result-list">
+                            <div class="compose-empty">배경+캐릭터를 선택하고 합성을 시작하세요.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <div id="toast" class="toast">복사되었습니다.</div>
+    </div>
+
+    <div id="memoPadModal" class="memo-modal is-hidden">
+        <div class="memo-modal-content">
+            <div class="memo-modal-header">
+                <input type="text" id="memoPadTitle" class="memo-modal-title" placeholder="메모 제목">
+                <button id="memoPadClose" class="btn-icon">✕</button>
+            </div>
+            <div class="memo-modal-body">
+                <label class="field-label" for="memoPadTags">캐릭터 1 상황 태그</label>
+                <textarea id="memoPadTags" class="input-area" rows="6" placeholder="standing, smiling, indoor..."></textarea>
+                <p class="helper-text">상황 태그를 입력하면 자동으로 저장됩니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="memoAdvancedSettingsModal" class="memo-modal is-hidden">
+        <div class="memo-modal-content">
+            <div class="memo-modal-header">
+                <h3>고급 설정</h3>
+                <button id="memoCloseAdvancedSettings" class="btn-icon">✕</button>
+            </div>
+            <div class="memo-modal-body">
+                <label class="field-label" for="memoInputSteps">Sampling Steps</label>
+                <input type="number" id="memoInputSteps" class="input-field" value="28">
+
+                <label class="field-label" for="memoInputPromptScale">Prompt Guidance</label>
+                <input type="number" id="memoInputPromptScale" class="input-field" value="6" step="0.1">
+
+                <label class="field-label" for="memoInputPromptRescale">Prompt Rescale</label>
+                <input type="number" id="memoInputPromptRescale" class="input-field" value="0.1" step="0.1">
+
+                <div class="memo-toggle">
+                    <input type="checkbox" id="memoChkVarietyPlus">
+                    <label for="memoChkVarietyPlus">Variety+ (다양성 증가)</label>
+                </div>
+                <p class="helper-text">체크 시 구도가 더 다양해질 수 있습니다.</p>
+
+                <div class="memo-ref">
+                    <h4>Reference Image (V4.5)</h4>
+                    <input type="file" id="memoRefImageInput" accept="image/*" class="input-field">
+                    <div id="memoRefImagePreviewContainer" class="memo-ref-preview is-hidden">
+                        <img id="memoRefImagePreview" src="" alt="ref preview">
+                        <button id="memoRemoveRefImage" class="btn btn-outline btn-sm">이미지 삭제</button>
+                    </div>
+                    <div id="memoStyleAwareContainer" class="memo-toggle is-hidden">
+                        <input type="checkbox" id="memoChkStyleAware">
+                        <label for="memoChkStyleAware">Style Aware (화풍 복사)</label>
+                    </div>
+                    <div id="memoRefStrengthContainer" class="memo-strength is-hidden">
+                        <label for="memoRngRefStrength">Reference Strength: <span id="memoRefStrengthValue">1.0</span></label>
+                        <input type="range" id="memoRngRefStrength" min="0.01" max="1" step="0.01" value="1">
+                    </div>
+                </div>
+                <button id="memoSaveAdvancedSettings" class="btn btn-dark btn-block">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="memoAllModal" class="memo-modal is-hidden">
+        <div class="memo-modal-content memo-modal-wide">
+            <div class="memo-modal-header">
+                <h3>전체 메모장</h3>
+                <button id="memoAllClose" class="btn-icon">✕</button>
+            </div>
+            <div class="memo-modal-body">
+                <div id="memoAllList" class="memo-all-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="story-maker.js"></script>
+</body>
+</html>

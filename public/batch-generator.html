@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novel AI Image Add Generator</title>
+    <link rel="stylesheet" href="batch-generator.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="panel settings-panel">
+            <div class="panel-header">
+                <h1>Novel AI Image Add Generator</h1>
+                <span class="version">v2.0 (Web)</span>
+            </div>
+            
+            <div class="scroll-content">
+                <section class="section">
+                    <h2>API 설정</h2>
+                    
+                    <div class="input-group">
+                        <label>NovelAI API Key (pst-...)</label>
+                        <div class="row">
+                            <input type="password" id="apiKey" placeholder="pst-..." class="input-text">
+                            <button id="saveApiKey" class="btn btn-black">저장</button>
+                        </div>
+                    </div>
+
+                    <div class="input-group mt-2">
+                        <label>Gemini API Key (AIza...)</label>
+                        <div class="row">
+                            <input type="password" id="googleApiKey" placeholder="AIza..." class="input-text">
+                            <button id="saveGoogleApiKey" class="btn btn-black">저장</button>
+                        </div>
+                    </div>
+                </section>
+                    <h2>공통 태그</h2>
+                    <div class="input-group">
+                        <label>작가/화풍 태그</label>
+                        <textarea id="artistTags" rows="3" class="input-textarea" placeholder="artist name, style..."></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>네거티브 태그</label>
+                        <textarea id="negativeTags" rows="3" class="input-textarea" placeholder="low quality, bad anatomy..."></textarea>
+                    </div>
+                </section>
+
+                <hr class="divider">
+
+                <section class="section">
+                    <div class="section-header">
+                        <h2>캐릭터 관리</h2>
+                        <button id="addCharacter" class="btn btn-sm btn-outline">+ 추가</button>
+                    </div>
+                    <div id="characterList" class="character-list"></div>
+                </section>
+
+                <hr class="divider">
+
+                <section class="section">
+                    <h2>생성 설정</h2>
+                    <div class="input-group">
+                        <label>이미지 크기</label>
+                        <select id="imageSize" class="input-select">
+                            <option value="832x1216">Portrait (832x1216)</option>
+                            <option value="1216x832">Landscape (1216x832)</option>
+                            <option value="1024x1024">Square (1024x1024)</option>
+                        </select>
+                    </div>
+                    <div class="row mt-2">
+                        <button id="openAdvancedSettings" class="btn btn-sm btn-text">고급 설정 ></button>
+                    </div>
+                        <div class="row mt-4">
+                        <a href="gemini.html" class="btn btn-outline btn-block gemini-mode-btn" style="text-decoration: none; text-align: center;">
+                            Gemini Mode
+                        </a>
+                </section>
+            </div>
+        </aside>
+
+        <main class="panel preview-panel">
+            <div class="preview-header">
+                <div class="header-left-group" style="display: flex; align-items: center; gap: 16px;">
+                    
+                    <div class="mode-switcher">
+                        <button id="modeContinuous" class="mode-btn active">연속 생성</button>
+                        <button id="modeMemoPad" class="mode-btn">메모장 생성</button>
+                        <button id="modeCharacter" class="mode-btn">캐릭터 생성</button>
+                    </div>
+
+                    <div class="delay-slider-wrapper" style="display: flex; align-items: center; gap: 8px; padding-left: 8px; border-left: 1px solid #e4e4e7;">
+                        <span style="font-size: 12px; font-weight: 600; color: #71717a;">딜레이</span>
+                        <input type="range" id="requestDelay" value="0" min="0" max="10" step="0.1" style="width: 100px; cursor: pointer;">
+                        <span id="delayDisplay" style="font-size: 12px; font-weight: bold; color: #000; min-width: 30px;">0s</span>
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <div id="continuousSettings" class="action-group">
+                        <input type="number" id="imageCount" value="1" min="1" max="100" class="input-number" style="width: 60px;">
+                        <span class="unit" style="font-size: 13px; margin-right: 8px;">장</span>
+                        <button id="generateContinuous" class="btn btn-black btn-lg">생성 시작</button>
+                    </div>
+
+                    <div id="memoPadSettings" class="action-group hidden">
+                        <span class="info-text" style="font-size: 13px; color: var(--muted-text); margin-right: 12px;">메모장 일괄 생성</span>
+                        <button id="generateMemoPad" class="btn btn-black btn-lg">전체 생성</button>
+                    </div>
+
+                    <div id="characterSettings" class="action-group hidden" style="align-items: center;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 8px;">
+                            <input type="file" id="charRefImageInput" accept="image/*" style="display: none;">
+                            <button id="btnUploadCharRef" class="btn btn-outline btn-sm" style="margin-bottom: 2px;">이미지 업로드</button>
+                            <span id="charRefStatus" style="font-size: 10px; color: var(--accent-color);">이미지 없음</span>
+                        </div>
+                        <input type="number" id="charImageCount" value="1" min="1" max="100" class="input-number" style="width: 60px;">
+                        <span class="unit" style="font-size: 13px; margin-right: 8px;">장</span>
+                        <button id="generateCharacter" class="btn btn-black btn-lg">캐릭터 생성</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="progressSection" class="progress-section hidden">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div class="progress-info">
+                    <span id="loadingText">준비 중...</span>
+                    <span id="progressText">0 / 0</span>
+                </div>
+            </div>
+
+            <div id="previewContainer" class="preview-gallery portrait">
+                <div class="empty-state">
+                    <p>이미지가 생성되면 이곳에 표시됩니다.</p>
+                </div>
+            </div>
+
+            <div class="preview-footer">
+                <button id="downloadAll" class="btn btn-outline btn-block" disabled>전체 저장 (ZIP)</button>
+            </div>
+        </main>
+
+        <aside class="panel memo-panel">
+            <div class="panel-header">
+                <h2>메모장</h2>
+                <div class="header-actions">
+                    <button id="importMemoJson" class="btn-icon" title="가져오기">📂</button>
+                    <button id="exportMemoJson" class="btn-icon" title="내보내기">💾</button>
+                    <input type="file" id="memoJsonFile" accept=".json" hidden>
+                    <textarea id="memoJsonOutput" hidden></textarea>
+                </div>
+            </div>
+            <div class="memo-controls">
+                <span class="count-badge">0/50</span>
+                <button id="addMemoPad" class="btn btn-black btn-sm">+ 새 메모</button>
+            </div>
+            <div id="memoList" class="memo-list scroll-content"></div>
+        </aside>
+    </div>
+
+    <div id="memoModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <input type="text" id="memoModalTitle" class="modal-title-input" placeholder="메모 제목">
+                <button id="closeMemoModal" class="btn-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="memoModalCharList" class="memo-char-list"></div>
+                <button id="memoModalAddChar" class="btn btn-outline btn-block mt-4">+ 캐릭터 상황 추가</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="advancedSettingsModal" class="modal hidden">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3>고급 설정</h3>
+                <button id="closeAdvancedSettings" class="btn-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>Sampling Steps</label>
+                    <input type="number" id="inputSteps" class="input-text" value="28">
+                </div>
+                <div class="input-group">
+                    <label>Prompt Guidance</label>
+                    <input type="number" id="inputPromptScale" class="input-text" value="6" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Prompt Rescale</label>
+                    <input type="number" id="inputPromptRescale" class="input-text" value="0" step="0.1">
+                </div>
+
+                <div class="input-group" style="margin-top: 12px; display: flex; align-items: center;">
+                    <input type="checkbox" id="chkVarietyPlus" style="margin-right: 8px; cursor: pointer;">
+                    <label for="chkVarietyPlus" style="margin-bottom: 0; cursor: pointer;">Variety+ (다양성 증가)</label>
+                </div>
+                <p style="font-size: 11px; color: #888; margin-bottom: 12px;">체크 시 구도가 더 다양해지지만, 퀄리티가 변할 수 있습니다.</p>
+
+                <hr class="divider" style="margin: 16px 0; border-top: 1px solid #eee;">
+
+                <div class="reference-section">
+                    <h4 style="font-size: 14px; margin-bottom: 10px;">Reference Image (V4.5)</h4>
+                    <div class="input-group">
+                        <label>이미지 업로드</label>
+                        <input type="file" id="refImageInput" accept="image/*" class="input-text">
+                    </div>
+                    <div id="refImagePreviewContainer" class="hidden" style="margin-bottom: 12px; text-align: center;">
+                        <img id="refImagePreview" src="" style="max-width: 100%; max-height: 200px; border-radius: 6px; border: 1px solid #ddd;">
+                        <button id="removeRefImage" class="btn-text danger" style="display: block; width: 100%; margin-top: 4px;">이미지 삭제</button>
+                    </div>
+                    <div id="styleAwareContainer" class="hidden input-group">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="chkStyleAware" style="margin-right: 8px;">
+                            Style Aware (화풍 복사)
+                        </label>
+                    </div>
+                    <div id="refStrengthContainer" class="hidden input-group">
+                        <label>Reference Strength: <span id="refStrengthValue">1.0</span></label>
+                        <input type="range" id="rngRefStrength" class="input-range" min="0.01" max="1.0" step="0.01" value="1.0" style="width: 100%;">
+                    </div>
+                </div>
+                <button id="saveAdvancedSettings" class="btn btn-black btn-block mt-4">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="previewLightbox" class="lightbox hidden">
+        <div class="lightbox-content">
+            <img id="lightboxImage" src="" alt="Preview">
+            <button class="lightbox-close">✕</button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="batch-generator.js"></script>
+</body>
+</html>

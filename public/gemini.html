@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Mode</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.0/dist/ort.all.min.mjs"
+        }
+    }
+    </script>
+    <link rel="stylesheet" href="gemini.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="panel settings-panel">
+            <div class="panel-header">
+                <h1>Gemini Mode</h1>
+                <a href="/" class="btn-text">← Back</a>
+            </div>
+            
+            <div class="scroll-content">
+                <section class="section">
+                    <h2>Google API 설정</h2>
+                    <div class="input-group">
+                        <label>Google API Key</label>
+                        <div class="row">
+                            <input type="password" id="googleApiKey" placeholder="AIza..." class="input-text">
+                            <button id="saveGoogleKey" class="btn btn-black">저장</button>
+                        </div>
+                        <p class="help-text">Gemini API 키를 입력하세요.</p>
+                    </div>
+                </section>
+
+                <hr class="divider">
+
+                <section class="section">
+                    <h2>모드 선택</h2>
+                    <div class="mode-cards">
+                        <div class="mode-card active" id="cardThumbnail">
+                            <div class="icon"></div>
+                            <div class="label">썸네일 제작</div>
+                            <div class="sub">Nano Banana</div>
+                        </div>
+                        <div class="mode-card" id="cardChat">
+                            <div class="icon"></div>
+                            <div class="label">채팅 모드</div>
+                            <div class="sub" id="chatCardSubtitle">Gemini 3 Pro</div>
+                        </div>
+                        <div class="mode-card" id="cardCompose">
+                            <div class="icon"></div>
+                            <div class="label">배경 합성</div>
+                            <div class="sub">Multi Image</div>
+                        </div>
+                        <div class="mode-card" id="cardTest">
+                            <div class="icon"></div>
+                            <div class="label">컷아웃 테스트</div>
+                            <div class="sub">배경 제거 + 수동 배치</div>
+                        </div>
+                    </div>
+                </section>
+
+                <hr class="divider">
+
+                <!-- 썸네일 모드 전용 설정 -->
+                <div id="thumbnailSettings">
+                    <section class="section">
+                        <h2>이미지 설정</h2>
+                        <div class="input-group">
+                            <label>해상도</label>
+                            <select id="thumbResolution" class="input-select">
+                                <option value="832x1216">832 × 1216 (Portrait)</option>
+                                <option value="1024x1024">1024 × 1024 (Square)</option>
+                                <option value="1216x832">1216 × 832 (Landscape)</option>
+                            </select>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 채팅 모드 전용 설정 -->
+                <div id="chatSettings" class="hidden">
+                    <section class="section">
+                        <h2>채팅 설정</h2>
+                        <div class="input-group">
+                            <label>모델 선택</label>
+                            <select id="chatModelSelect" class="input-select">
+                                <option value="gemini-3-pro-preview">Gemini 3 Pro (preview)</option>
+                                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            </select>
+                        </div>
+                        <div class="chat-room-section">
+                            <div class="section-subheader">채팅방</div>
+                            <div id="chatRoomList" class="chat-room-list"></div>
+                            <div class="row" style="margin-top: 8px;">
+                                <button id="createChatRoom" class="btn btn-black btn-sm">새 채팅 생성</button>
+                            </div>
+                            <div class="row chat-room-pagination">
+                                <button id="chatRoomPrev" class="btn btn-outline btn-sm">이전</button>
+                                <span id="chatRoomPageInfo" class="muted">1 / 1</span>
+                                <button id="chatRoomNext" class="btn btn-outline btn-sm">다음</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 배경 합성 모드 설정 -->
+                <div id="composeSettings" class="hidden">
+                    <section class="section">
+                        <h2>배경 합성 설정</h2>
+                        <p class="help-text">배경 1장 + 캐릭터 여러 장을 함께 보내 자연스럽게 합성합니다.</p>
+                        <div class="input-group">
+                            <label>해상도</label>
+                            <select id="composeResolution" class="input-select">
+                                <option value="832x1216">832 × 1216 (Portrait)</option>
+                                <option value="1024x1024">1024 × 1024 (Square)</option>
+                                <option value="1216x832">1216 × 832 (Landscape)</option>
+                            </select>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 테스트 모드 설정 -->
+                <div id="testSettings" class="hidden">
+                    <section class="section">
+                        <h2>컷아웃/합성 테스트</h2>
+                        <p class="help-text">캐릭터 배경을 제거한 뒤 캔버스에서 자유롭게 배치/스케일 조정</p>
+                        <div class="input-group">
+                            <label>해상도</label>
+                            <select id="testResolution" class="input-select">
+                                <option value="832x1216">832 × 1216 (Portrait)</option>
+                                <option value="1024x1024">1024 × 1024 (Square)</option>
+                                <option value="1216x832">1216 × 832 (Landscape)</option>
+                            </select>
+                        </div>
+                    </section>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="panel main-panel">
+            
+            <!-- 1. 썸네일 제작 화면 (UI 개선됨) -->
+            <div id="viewThumbnail" class="view-container">
+                <div class="canvas-area">
+                    <div id="thumbPreview" class="thumb-preview empty">
+                        <div class="placeholder">
+                            <span style="font-size: 48px;"></span>
+                            <p>Nano Banana에게 작업을 요청하세요.</p>
+                        </div>
+                        <img id="generatedImage" src="" class="hidden">
+                        <div id="thumbLoading" class="loader hidden"></div>
+                    </div>
+                </div>
+                
+                <div class="prompt-area expanded">
+                    <!-- 상단 툴바: 이미지 업로드 버튼을 밖으로 뺌 -->
+                    <div class="tools-header">
+                        <span class="tools-label">Reference Image</span>
+                        <input type="file" id="thumbImageInput" accept="image/*" hidden>
+                        <button id="btnAttachThumbImage" class="btn-tool-upload">
+                            이미지 업로드 (리터칭/참조)
+                        </button>
+                    </div>
+
+                    <!-- 업로드된 이미지 미리보기 영역 -->
+                    <div id="thumbImagePreviewArea" class="reference-preview-box hidden">
+                        <div class="preview-wrapper">
+                            <img id="thumbImagePreview" src="">
+                            <button id="removeThumbImage" class="btn-remove-preview">✕</button>
+                        </div>
+                        <span class="preview-info">이 이미지를 바탕으로 변형합니다.</span>
+                    </div>
+
+                    <!-- 프롬프트 입력 -->
+                    <div class="input-wrapper">
+                        <textarea id="thumbPrompt" placeholder="어떻게 바꿔줄까? (예: 수채화 스타일로 바꿔줘, 배경을 우주로 변경해줘, 고양이 귀를 씌워줘)"></textarea>
+                        <button id="btnGenerateThumb" class="btn-send">생성</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 채팅 화면 -->
+            <div id="viewChat" class="view-container hidden">
+                <div id="chatHistory" class="chat-history">
+                    <div class="message system">
+                        <div class="bubble" id="chatModelBadge">Gemini 3 Pro</div>
+                    </div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <div id="imagePreviewArea" class="image-attachment hidden">
+                        <img id="chatImagePreview" src="">
+                        <button id="removeChatImage">✕</button>
+                    </div>
+                    <div class="input-wrapper">
+                        <input type="file" id="chatImageInput" accept="image/*" hidden>
+                        <button id="btnAttachImage" class="btn-icon" title="이미지 첨부">📎</button>
+                        <textarea id="chatPrompt" placeholder="메시지를 입력하세요..." rows="1"></textarea>
+                        <button id="btnSendChat" class="btn-send">전송</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 배경 합성 화면 -->
+            <div id="viewCompose" class="view-container hidden">
+                <div class="compose-layout">
+                    <div class="compose-left">
+                        <div class="section-box">
+                            <div class="section-header">
+                                <div>
+                                    <h3>배경 이미지</h3>
+                                    <p class="muted">1장만 선택</p>
+                                </div>
+                                <div class="row">
+                                    <input type="file" id="composeBgInput" accept="image/*" hidden>
+                                    <button id="btnAttachComposeBg" class="btn-tool-upload">배경 업로드</button>
+                                    <button id="btnRemoveComposeBg" class="btn btn-outline btn-sm">지우기</button>
+                                </div>
+                            </div>
+                            <div id="composeBgPreview" class="reference-preview-box empty-box">
+                                <span class="muted">배경 이미지가 없습니다.</span>
+                            </div>
+                        </div>
+
+                        <div class="section-box">
+                            <div class="section-header">
+                                <div>
+                                    <h3>캐릭터 이미지</h3>
+                                    <p class="muted">여러 장 선택 가능</p>
+                                </div>
+                                <div class="row">
+                                    <input type="file" id="composeCharInput" accept="image/*" multiple hidden>
+                                    <button id="btnAttachComposeChars" class="btn-tool-upload">캐릭터 업로드</button>
+                                    <button id="btnClearComposeChars" class="btn btn-outline btn-sm">지우기</button>
+                                </div>
+                            </div>
+                            <div id="composeCharList" class="thumb-list empty-box">
+                                <span class="muted">캐릭터 이미지를 추가해주세요.</span>
+                            </div>
+                        </div>
+
+                        <div class="section-box">
+                            <div class="input-group">
+                                <label>합성 프롬프트</label>
+                                <textarea id="composePrompt" class="input-text" rows="3" placeholder="배경과 캐릭터를 자연스럽게 합성해줘. 캐릭터의 포즈와 스타일은 유지하고, 배경 조명에 맞춰 조명을 보정해줘."></textarea>
+                            </div>
+                            <div class="row" style="justify-content: space-between; align-items: center; gap:12px;">
+                                <button id="btnGenerateCompose" class="btn btn-black" style="flex:1;">합성 시작</button>
+                                <button id="btnStopCompose" class="btn btn-outline btn-sm">중단</button>
+                                <button id="btnDownloadAllCompose" class="btn btn-outline">전체 저장</button>
+                            </div>
+                            <p id="composeStatus" class="help-text" style="margin-top:8px;"></p>
+                        </div>
+                    </div>
+
+                    <div class="compose-right">
+                        <div class="section-header">
+                            <div>
+                                <h3>합성 결과</h3>
+                                <p class="muted">캐릭터 수만큼 순차 생성</p>
+                            </div>
+                        </div>
+                        <div id="composeResultList" class="compose-result-list">
+                            <div class="placeholder muted">배경+캐릭터를 선택하고 합성을 시작하세요.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 테스트 (컷아웃 후 수동 배치) -->
+            <div id="viewTest" class="view-container hidden">
+                <div class="compose-layout">
+                    <div class="compose-left">
+                        <div class="section-box">
+                            <div class="section-header">
+                                <div>
+                                    <h3>배경 이미지</h3>
+                                    <p class="muted">1장만 선택</p>
+                                </div>
+                                <div class="row">
+                                    <input type="file" id="testBgInput" accept="image/*" hidden>
+                                    <button id="btnAttachTestBg" class="btn-tool-upload">배경 업로드</button>
+                                    <button id="btnRemoveTestBg" class="btn btn-outline btn-sm">지우기</button>
+                                </div>
+                            </div>
+                            <div id="testBgPreview" class="reference-preview-box empty-box">
+                                <span class="muted">배경 이미지가 없습니다.</span>
+                            </div>
+                        </div>
+
+                        <div class="section-box">
+                            <div class="section-header">
+                                <div>
+                                    <h3>캐릭터 이미지</h3>
+                                    <p class="muted">여러 장 선택 → 로컬 누끼</p>
+                                </div>
+                                <div class="row">
+                                    <input type="file" id="testCharInput" accept="image/*" multiple hidden>
+                                    <button id="btnAttachTestChars" class="btn-tool-upload">캐릭터 업로드</button>
+                                    <button id="btnClearTestChars" class="btn btn-outline btn-sm">지우기</button>
+                                </div>
+                            </div>
+                            <div id="testCharList" class="thumb-list empty-box">
+                                <span class="muted">캐릭터 이미지를 추가해주세요.</span>
+                            </div>
+                            <div class="row" style="margin-top:8px; gap:8px;">
+                                <button id="btnCutoutTest" class="btn btn-black" style="flex:1;">배경 제거</button>
+                                <button id="btnAddAllTest" class="btn btn-outline" style="flex:1;">캔버스 배치</button>
+                            </div>
+                            <p class="help-text">배경 제거는 @imgly/background-removal 로컬 처리</p>
+                        </div>
+
+                        <div class="section-box">
+                            <div class="row" style="gap:8px; flex-wrap:wrap;">
+                                <button id="btnResetCanvas" class="btn btn-outline btn-sm">캔버스 초기화</button>
+                                <button id="btnDownloadTest" class="btn btn-black btn-sm">PNG 저장</button>
+                            </div>
+                            <p id="testStatus" class="help-text" style="margin-top:8px;"></p>
+                        </div>
+
+                        <div class="section-box">
+                            <div class="input-group">
+                                <label>자동 배치 프리셋 (JSON, x/y/scale%)</label>
+                                <textarea id="testLayoutConfig" class="input-text" rows="3">[{"x":50,"y":60,"scale":100}]</textarea>
+                            </div>
+                            <button id="btnAutoCompose" class="btn btn-black" style="width:100%;">자동 배치</button>
+                            <button id="btnAutoComposePerChar" class="btn btn-outline" style="width:100%; margin-top:8px;">캐릭터별 합성 후 ZIP</button>
+                            <p class="help-text" style="margin-top:6px;">다중 캐릭터를 한 캔버스에 배치<br>배경+캐릭터 1:1 합성하여 ZIP 다운로드</p>
+                        </div>
+                    </div>
+
+                    <div class="compose-right">
+                        <div class="section-header">
+                            <div>
+                                <h3>캔버스 미리보기</h3>
+                                <p class="muted">드래그/리사이즈로 자유롭게 배치</p>
+                            </div>
+                        </div>
+                        <div class="canvas-wrapper">
+                            <canvas id="testCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="gemini.js"></script>
+</body>
+</html>
