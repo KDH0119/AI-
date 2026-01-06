@@ -930,8 +930,28 @@ a15714ab041eb360be3335625683746f0153442bd6a4ea89d63066f89c11cd6e975e0a705089b287
 
 ### 신체
 
--건강·부상·신체결손 등 물리적 상태 표기`
+-건강·부상·신체결손 등 물리적 상태 표기
 
+# 서술 문체 규칙
+
+-시점: 객관적 기록자
+
+-내면묘사: 날씨·조명·행동 등으로 감정 묘사(Show，don't tell)
+
+-톤: 문어체. 조선식 격식과 느와르 특유의 냉소+자조에 풍자，메타 발언，생활형 은어 등 섞어 사용
+
+-비유: 기계·네온·데이터·도시 구조와 조선시대 특유의 서정적 느낌을 합쳐 은유나 비유 활용
+
+-신분·질서·예법·왕권·기업 권력을 운명·천명·낡은 규범처럼 묘사하되，가끔 한자를 섞어 역사성 부여
+
+-인공기후·환경 오염·과남용된 기술 등으로 디스토피아 묘사
+
+-느와르 요소: 블랙코미디→냉소·말장난과 진지함 공존，예법과 회색윤리가 뒤섞여 피해자/가해자의 구분이 흐림. 은유와 이중의미+정보 암시
+
+-추가: 괄호(예: (?), (아마도))나，ⓒ(예: 정운혁·윤매화 등)들의 속마음·독백 등을 개그요소로 활용
+
+
+`
 ;
 const TEMPLATE_SIMULATION_V2 = `# Goal
 
@@ -1730,13 +1750,17 @@ const setNovelAiKey = (apiKey) => {
 const initApiKeys = () => {
     const googleInput = document.getElementById('globalGoogleApiKey');
     const novelInput = document.getElementById('globalNovelApiKey');
+    const photoRoomInput = document.getElementById('globalPhotoRoomApiKey');
     const saveGoogle = document.getElementById('saveGlobalGoogleKey');
     const saveNovel = document.getElementById('saveGlobalNovelKey');
+    const savePhotoRoom = document.getElementById('saveGlobalPhotoRoomKey');
     const googleStatus = document.getElementById('googleKeyStatus');
     const novelStatus = document.getElementById('novelKeyStatus');
+    const photoRoomStatus = document.getElementById('photoRoomKeyStatus');
 
     if (googleInput) googleInput.value = localStorage.getItem('google_api_key') || '';
     if (novelInput) novelInput.value = getNovelAiKey();
+    if (photoRoomInput) photoRoomInput.value = localStorage.getItem('photoroom_api_key') || '';
 
     const showStatus = (el, text) => {
         if (!el) return;
@@ -1764,6 +1788,15 @@ const initApiKeys = () => {
             syncIframes();
         });
     }
+
+    if (savePhotoRoom && photoRoomInput) {
+        savePhotoRoom.addEventListener('click', () => {
+            const key = photoRoomInput.value.trim();
+            if (!key) return showStatus(photoRoomStatus, '키를 입력하세요.');
+            localStorage.setItem('photoroom_api_key', key);
+            showStatus(photoRoomStatus, '저장됨');
+        });
+    }
 };
 
 const initMenu = () => {
@@ -1781,6 +1814,32 @@ const initMenu = () => {
 
     menuItems.forEach((item) => {
         item.addEventListener('click', () => showView(item.dataset.view));
+    });
+};
+
+const initStoryDrawer = () => {
+    const drawer = document.getElementById('storySettingsDrawer');
+    const backdrop = document.getElementById('storyDrawerBackdrop');
+    const openBtn = document.getElementById('openStorySettings');
+    const closeBtn = document.getElementById('closeStorySettings');
+
+    if (!drawer || !backdrop || !openBtn || !closeBtn) return;
+
+    const open = () => {
+        drawer.classList.add('is-open');
+        backdrop.classList.remove('is-hidden');
+    };
+
+    const close = () => {
+        drawer.classList.remove('is-open');
+        backdrop.classList.add('is-hidden');
+    };
+
+    openBtn.addEventListener('click', open);
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', close);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') close();
     });
 };
 
@@ -1891,6 +1950,8 @@ const memoState = {
     promptScale: 6,
     promptRescale: 0.1,
     requestDelay: 0,
+    stripMetadata: false,
+    useSequentialTitle: false,
     varietyPlus: false,
     referenceImage: null,
     useStyleAware: false,
@@ -1906,6 +1967,8 @@ const memoElements = () => ({
     imageSize: document.getElementById('memoImageSize'),
     requestDelay: document.getElementById('memoRequestDelay'),
     delayValue: document.getElementById('memoDelayValue'),
+    stripMetadata: document.getElementById('memoStripMetadata'),
+    useSequentialTitle: document.getElementById('memoUseSequentialTitle'),
     generateAll: document.getElementById('memoGenerateAll'),
     downloadAll: document.getElementById('memoDownloadAll'),
     previewContainer: document.getElementById('memoPreviewContainer'),
@@ -1921,7 +1984,9 @@ const memoElements = () => ({
     openAll: document.getElementById('memoOpenAll'),
     importJson: document.getElementById('memoImportJson'),
     exportJson: document.getElementById('memoExportJson'),
+    deleteByImages: document.getElementById('memoDeleteByImages'),
     jsonFile: document.getElementById('memoJsonFile'),
+    deleteImagesFile: document.getElementById('memoDeleteImagesFile'),
     memoModal: document.getElementById('memoPadModal'),
     memoTitle: document.getElementById('memoPadTitle'),
     memoTags: document.getElementById('memoPadTags'),
@@ -1976,7 +2041,43 @@ const memoShowLoading = (show) => {
     if (overlay) overlay.classList.toggle('is-hidden', !show);
 };
 
-const sanitizeFilename = (filename) => filename.replace(/[^a-zA-Z0-9\uAC00-\uD7A3\u3131-\u318E_]/g, '_');
+const sanitizeFilename = (filename) => String(filename ?? '').replace(/[^a-zA-Z0-9\uAC00-\uD7A3\u3131-\u318E_]/g, '_');
+const stripFileExtension = (filename) => String(filename || '').replace(/\.[^/.]+$/, '');
+const toMemoKey = (value) => sanitizeFilename(String(value || '')).toLowerCase();
+
+const detectImageMime = (base64) => {
+    if (base64.startsWith('/9j/')) return 'image/jpeg';
+    if (base64.startsWith('iVBORw0')) return 'image/png';
+    return 'image/png';
+};
+
+const stripImageMetadata = (base64) => new Promise((resolve) => {
+    try {
+        const mime = detectImageMime(base64);
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const outMime = mime === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+            const dataUrl = outMime === 'image/jpeg'
+                ? canvas.toDataURL(outMime, 0.92)
+                : canvas.toDataURL(outMime);
+            resolve(dataUrl.split(',')[1]);
+        };
+        img.onerror = () => resolve(base64);
+        img.src = `data:${mime};base64,${base64}`;
+    } catch {
+        resolve(base64);
+    }
+});
+
+const memoEnsureNoMetadata = async (base64) => {
+    if (!memoState.stripMetadata) return base64;
+    return stripImageMetadata(base64);
+};
 
 const memoLoadFromStorage = () => {
     const saved = safeJsonParse(localStorage.getItem('novelai_batch_state'));
@@ -1993,6 +2094,8 @@ const memoLoadFromStorage = () => {
         memoState.promptScale = saved.promptScale || 6;
         memoState.promptRescale = saved.promptRescale ?? 0.1;
         memoState.requestDelay = typeof saved.requestDelay === 'number' ? saved.requestDelay : 0;
+        memoState.stripMetadata = !!saved.stripMetadata;
+        memoState.useSequentialTitle = !!saved.useSequentialTitle;
         memoState.varietyPlus = !!saved.varietyPlus;
         memoState.referenceImage = saved.referenceImage || null;
         memoState.useStyleAware = !!saved.useStyleAware;
@@ -2016,6 +2119,8 @@ const memoLoadFromStorage = () => {
     }
     if (el.requestDelay) el.requestDelay.value = memoState.requestDelay;
     if (el.delayValue) el.delayValue.textContent = `${memoState.requestDelay}s`;
+    if (el.stripMetadata) el.stripMetadata.checked = memoState.stripMetadata;
+    if (el.useSequentialTitle) el.useSequentialTitle.checked = memoState.useSequentialTitle;
     memoUpdateRefUIFromState();
 };
 
@@ -2037,6 +2142,8 @@ const memoSaveToStorage = () => {
         promptScale: memoState.promptScale,
         promptRescale: memoState.promptRescale,
         requestDelay: memoState.requestDelay,
+        stripMetadata: memoState.stripMetadata,
+        useSequentialTitle: memoState.useSequentialTitle,
         varietyPlus: memoState.varietyPlus,
         referenceImage: memoState.referenceImage,
         useStyleAware: memoState.useStyleAware,
@@ -2153,7 +2260,6 @@ const memoAddPad = () => {
 const memoRemovePad = (memoId) => {
     memoState.memoPads = memoState.memoPads.filter(m => m.id !== memoId);
     if (activeMemoPadId === memoId) memoCloseModal();
-    memoCloseAllModal();
     memoSaveToStorage();
     memoRenderMemoPads();
 };
@@ -2192,6 +2298,36 @@ const memoImportJson = (event) => {
         }
     };
     reader.readAsText(file);
+    event.target.value = '';
+};
+
+const memoDeleteByImages = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const targetKeys = new Set(
+        files.map(file => {
+            const name = file.name || '';
+            const base = name.replace(/\.[^/.]+$/, '');
+            return toMemoKey(base);
+        })
+    );
+    const before = memoState.memoPads.length;
+    memoState.memoPads = memoState.memoPads.filter(memo => {
+        const titleKey = toMemoKey(memo.title);
+        const idKey = toMemoKey(memo.id);
+        return !targetKeys.has(titleKey) && !targetKeys.has(idKey);
+    });
+    const removed = before - memoState.memoPads.length;
+    if (removed > 0) {
+        if (activeMemoPadId && !memoState.memoPads.some(m => m.id === activeMemoPadId)) {
+            memoCloseModal();
+        }
+        memoSaveToStorage();
+        memoRenderMemoPads();
+        showToast(`이미지 이름과 일치하는 메모장 ${removed}개를 삭제했습니다.`);
+    } else {
+        showToast('일치하는 메모장이 없습니다.');
+    }
     event.target.value = '';
 };
 
@@ -2319,9 +2455,10 @@ const memoRenderPreview = () => {
     });
 };
 
-const memoDownloadSingle = (img) => {
+const memoDownloadSingle = async (img) => {
+    const data = await memoEnsureNoMetadata(img.data);
     const a = document.createElement('a');
-    a.href = `data:image/png;base64,${img.data}`;
+    a.href = `data:image/png;base64,${data}`;
     a.download = img.filename;
     document.body.appendChild(a);
     a.click();
@@ -2332,8 +2469,12 @@ const memoDownloadAllImages = async () => {
     if (!memoState.generatedImages.length) return;
     try {
         const zip = new JSZip();
-        memoState.generatedImages.forEach((img) => {
-            zip.file(img.filename, img.data, { base64: true });
+        const items = await Promise.all(memoState.generatedImages.map(async (img) => ({
+            filename: img.filename,
+            data: await memoEnsureNoMetadata(img.data)
+        })));
+        items.forEach((item) => {
+            zip.file(item.filename, item.data, { base64: true });
         });
         const content = await zip.generateAsync({ type: 'blob' });
         const link = document.createElement('a');
@@ -2427,7 +2568,11 @@ const memoGenerateImage = async (config) => {
     const blob = await res.blob();
     const zip = await new JSZip().loadAsync(blob);
     const file = Object.keys(zip.files).find(name => name.match(/\.(png|jpg)$/));
-    return zip.files[file].async('base64');
+    const base64 = await zip.files[file].async('base64');
+    if (memoState.stripMetadata) {
+        return stripImageMetadata(base64);
+    }
+    return base64;
 };
 
 const memoStartGeneration = async () => {
@@ -2457,10 +2602,13 @@ const memoStartGeneration = async () => {
                     charNegativeTags: ''
                 }]
             });
+            const filenameBase = memoState.useSequentialTitle
+                ? sanitizeFilename(memo.id ?? i + 1)
+                : sanitizeFilename(memo.title || `memo_${i + 1}`);
             memoState.generatedImages.push({
                 id: memo.id,
                 data: base64,
-                filename: `${sanitizeFilename(memo.title || `memo_${i + 1}`)}.png`
+                filename: `${filenameBase}.png`
             });
             memoUpdateProgress(i + 1, memoState.memoPads.length);
             memoRenderPreview();
@@ -2507,6 +2655,18 @@ const initMemoGenerator = () => {
         });
         el.requestDelay.addEventListener('change', memoSaveToStorage);
     }
+    if (el.stripMetadata) {
+        el.stripMetadata.addEventListener('change', (e) => {
+            memoState.stripMetadata = !!e.target.checked;
+            memoSaveToStorage();
+        });
+    }
+    if (el.useSequentialTitle) {
+        el.useSequentialTitle.addEventListener('change', (e) => {
+            memoState.useSequentialTitle = !!e.target.checked;
+            memoSaveToStorage();
+        });
+    }
 
     el.generateAll?.addEventListener('click', memoStartGeneration);
     el.downloadAll?.addEventListener('click', memoDownloadAllImages);
@@ -2515,6 +2675,8 @@ const initMemoGenerator = () => {
     el.importJson?.addEventListener('click', () => el.jsonFile?.click());
     el.jsonFile?.addEventListener('change', memoImportJson);
     el.exportJson?.addEventListener('click', memoExportJson);
+    el.deleteByImages?.addEventListener('click', () => el.deleteImagesFile?.click());
+    el.deleteImagesFile?.addEventListener('change', memoDeleteByImages);
 
     el.memoClose?.addEventListener('click', memoCloseModal);
     el.memoModal?.addEventListener('click', (e) => { if (e.target === el.memoModal) memoCloseModal(); });
@@ -2548,6 +2710,69 @@ const composeState = {
     characters: [],
     results: [],
     abort: false
+};
+
+const compose2State = {
+    background: null,
+    characters: [],
+    results: [],
+    activeIndex: 0,
+    bgBlurEnabled: false,
+    bgBlurStrength: 8,
+    useCutout: true
+};
+
+const resolveCompose2OutputSize = (bgWidth, bgHeight) => {
+    const select = document.getElementById('compose2OutputSize');
+    const value = select?.value || '';
+
+    let width = bgWidth;
+    let height = bgHeight;
+
+    if (value === 'background') {
+        width = bgWidth;
+        height = bgHeight;
+    } else if (value && value.includes('x')) {
+        const [w, h] = value.split('x').map((part) => parseInt(part.trim(), 10));
+        if (Number.isFinite(w) && w > 0) width = w;
+        if (Number.isFinite(h) && h > 0) height = h;
+    }
+
+    return { width, height };
+};
+
+const loadImageFromDataUrl = (dataURL) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('이미지 로드 실패'));
+    img.src = dataURL;
+});
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+});
+
+const removeBackgroundWithPhotoRoom = async (dataURL) => {
+    const apiKey = localStorage.getItem('photoroom_api_key');
+    if (!apiKey) throw new Error('PhotoRoom API 키를 먼저 설정해주세요.');
+    const response = await fetch(`${getApiBaseUrl()}/api/photoroom/segment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            apiKey,
+            image: dataURL,
+            format: 'png',
+            size: 'full'
+        })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'PhotoRoom API 오류');
+    const mimeType = data.mimeType || 'image/png';
+    if (!data.image) throw new Error('응답 이미지가 없습니다.');
+    return `data:${mimeType};base64,${data.image}`;
 };
 
 const getApiBaseUrl = () => {
@@ -2809,6 +3034,426 @@ const initCompose = () => {
     renderComposeResults();
 };
 
+const setCompose2Status = (text) => {
+    const el = document.getElementById('compose2Status');
+    if (el) el.textContent = text || '';
+};
+
+const resetCompose2Results = () => {
+    compose2State.results = [];
+    renderCompose2Results();
+};
+
+const renderCompose2BgPreview = () => {
+    const box = document.getElementById('compose2BgPreview');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!compose2State.background) {
+        box.innerHTML = '<span class="muted">배경 이미지가 없습니다.</span>';
+        return;
+    }
+    const img = document.createElement('img');
+    img.src = compose2State.background.dataURL;
+    box.appendChild(img);
+};
+
+const renderCompose2CharList = () => {
+    const list = document.getElementById('compose2CharList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!compose2State.characters.length) {
+        list.innerHTML = '<span class="muted">캐릭터 이미지를 추가해주세요.</span>';
+        return;
+    }
+
+    if (compose2State.activeIndex >= compose2State.characters.length) {
+        compose2State.activeIndex = 0;
+    }
+
+    compose2State.characters.forEach((char, idx) => {
+        const item = document.createElement('div');
+        item.className = `compose2-item${idx === compose2State.activeIndex ? ' is-active' : ''}`;
+        item.dataset.index = String(idx);
+        item.innerHTML = `
+            <div class="compose2-thumb">
+                <img src="${char.dataURL}" alt="${char.name}">
+                <button type="button" class="compose2-remove" title="삭제">✕</button>
+            </div>
+            <div class="compose2-info">
+                <div class="compose2-name">${char.name}</div>
+                <div class="compose2-coords">
+                    <label>X <input type="number" inputmode="numeric" data-axis="x" value="${char.x || 0}"></label>
+                    <label>Y <input type="number" inputmode="numeric" data-axis="y" value="${Number.isFinite(char.y) ? char.y : 101}"></label>
+                    <label>W <input type="number" inputmode="numeric" data-axis="w" value="${Number.isFinite(char.width) ? char.width : ''}"></label>
+                    <label>H <input type="number" inputmode="numeric" data-axis="h" value="${Number.isFinite(char.height) ? char.height : ''}"></label>
+                </div>
+            </div>
+        `;
+        item.querySelector('.compose2-remove').addEventListener('click', () => removeCompose2Character(idx));
+
+        item.querySelectorAll('input[data-axis]').forEach((input) => {
+            input.addEventListener('input', (e) => {
+                const axis = e.target.dataset.axis;
+                const value = parseInt(e.target.value, 10);
+                const nextValue = Number.isFinite(value) ? value : 0;
+                if (axis === 'x') char.x = nextValue;
+                if (axis === 'y') char.y = nextValue;
+                if (axis === 'w') char.width = Number.isFinite(value) && value > 0 ? value : null;
+                if (axis === 'h') char.height = Number.isFinite(value) && value > 0 ? value : null;
+                renderCompose2Canvas();
+            });
+            input.addEventListener('focus', () => {
+                compose2State.activeIndex = idx;
+                updateCompose2ActiveHighlight();
+                renderCompose2Canvas();
+            });
+        });
+
+        item.addEventListener('click', (e) => {
+            if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'button') return;
+            compose2State.activeIndex = idx;
+            updateCompose2ActiveHighlight();
+            renderCompose2Canvas();
+        });
+
+        list.appendChild(item);
+    });
+};
+
+const updateCompose2ActiveHighlight = () => {
+    const items = document.querySelectorAll('#compose2CharList .compose2-item');
+    items.forEach((item) => {
+        const idx = parseInt(item.dataset.index || '', 10);
+        const isActive = Number.isFinite(idx) && idx === compose2State.activeIndex;
+        item.classList.toggle('is-active', isActive);
+    });
+};
+
+const renderCompose2Canvas = () => {
+    const canvas = document.getElementById('compose2Canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const bg = compose2State.background?.img || null;
+    if (!bg) {
+        canvas.width = 640;
+        canvas.height = 360;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#f7f1e9';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#9a8b7a';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('배경 이미지를 업로드해주세요.', 16, 28);
+        return;
+    }
+
+    const bgWidth = bg.naturalWidth || bg.width;
+    const bgHeight = bg.naturalHeight || bg.height;
+    const { width, height } = resolveCompose2OutputSize(bgWidth, bgHeight);
+
+    if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (compose2State.bgBlurEnabled && compose2State.bgBlurStrength > 0) {
+        ctx.filter = `blur(${compose2State.bgBlurStrength}px)`;
+    } else {
+        ctx.filter = 'none';
+    }
+    ctx.drawImage(bg, 0, 0, width, height);
+    ctx.filter = 'none';
+
+    const active = compose2State.characters[compose2State.activeIndex];
+    if (active?.img) {
+        const x = Number.isFinite(active.x) ? active.x : 0;
+        const y = Number.isFinite(active.y) ? active.y : 101;
+        const drawW = Number.isFinite(active.width) ? active.width : (active.img.naturalWidth || active.img.width);
+        const drawH = Number.isFinite(active.height) ? active.height : (active.img.naturalHeight || active.img.height);
+        ctx.drawImage(active.img, x, y, drawW, drawH);
+    }
+};
+
+const renderCompose2Results = () => {
+    const list = document.getElementById('compose2ResultList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!compose2State.results.length) {
+        list.innerHTML = '<div class="compose-empty">합성 결과가 여기에 표시됩니다.</div>';
+        return;
+    }
+    compose2State.results.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'compose-card';
+        div.innerHTML = `
+            <img src="data:image/png;base64,${item.data}" alt="compose2-${idx + 1}">
+            <div class="info">
+                <div>${item.sourceName || '캐릭터'} (#${idx + 1})</div>
+                <button>저장</button>
+            </div>
+        `;
+        div.querySelector('button').addEventListener('click', () => downloadCompose2Single(item));
+        list.appendChild(div);
+    });
+};
+
+const handleCompose2BgUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const dataURL = e.target.result;
+            const img = await loadImageFromDataUrl(dataURL);
+            compose2State.background = { name: file.name, dataURL, img };
+            renderCompose2BgPreview();
+            renderCompose2Canvas();
+            resetCompose2Results();
+        } catch {
+            showToast('배경 업로드에 실패했습니다.');
+        }
+    };
+    reader.readAsDataURL(file);
+};
+
+const handleCompose2CharUpload = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const shouldCutout = compose2State.useCutout;
+    if (shouldCutout && !localStorage.getItem('photoroom_api_key')) {
+        showToast('PhotoRoom API 키를 먼저 설정해주세요.');
+        return;
+    }
+
+    const run = async () => {
+        const items = [];
+        for (let i = 0; i < files.length; i += 1) {
+            const file = files[i];
+            setCompose2Status(`누끼 처리 중... (${i + 1}/${files.length})`);
+            try {
+                const dataURL = await readFileAsDataUrl(file);
+                const finalUrl = shouldCutout ? await removeBackgroundWithPhotoRoom(dataURL) : dataURL;
+                const img = await loadImageFromDataUrl(finalUrl);
+                items.push({
+                    name: file.name,
+                    dataURL: finalUrl,
+                    img,
+                    x: 0,
+                    y: 0,
+                    width: img.naturalWidth || img.width,
+                    height: img.naturalHeight || img.height
+                });
+            } catch (error) {
+                console.error(error);
+                showToast(`누끼 실패: ${file.name}`);
+            }
+        }
+
+        if (items.length) {
+            compose2State.characters.push(...items);
+            if (!Number.isFinite(compose2State.activeIndex)) {
+                compose2State.activeIndex = 0;
+            }
+            renderCompose2CharList();
+            renderCompose2Canvas();
+            resetCompose2Results();
+        }
+        setCompose2Status('');
+    };
+
+    run().catch((error) => {
+        console.error(error);
+        setCompose2Status('');
+        showToast('캐릭터 업로드에 실패했습니다.');
+    });
+};
+
+const clearCompose2Background = () => {
+    compose2State.background = null;
+    renderCompose2BgPreview();
+    renderCompose2Canvas();
+    resetCompose2Results();
+};
+
+const clearCompose2Characters = () => {
+    compose2State.characters = [];
+    compose2State.activeIndex = 0;
+    renderCompose2CharList();
+    renderCompose2Canvas();
+    resetCompose2Results();
+};
+
+const removeCompose2Character = (index) => {
+    compose2State.characters.splice(index, 1);
+    if (compose2State.activeIndex >= compose2State.characters.length) {
+        compose2State.activeIndex = Math.max(0, compose2State.characters.length - 1);
+    }
+    renderCompose2CharList();
+    renderCompose2Canvas();
+    resetCompose2Results();
+};
+
+const downloadCompose2Single = (item) => {
+    const a = document.createElement('a');
+    a.href = `data:image/png;base64,${item.data}`;
+    a.download = item.filename || 'compose2.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+};
+
+const downloadAllCompose2 = async () => {
+    if (!compose2State.results.length) return showToast('먼저 합성을 실행해주세요.');
+    if (typeof JSZip === 'undefined') return showToast('JSZip을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+    try {
+        const zip = new JSZip();
+        compose2State.results.forEach((item, idx) => {
+            zip.file(item.filename || `compose2_${idx + 1}.png`, item.data, { base64: true });
+        });
+        const content = await zip.generateAsync({ type: 'blob' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `compose2_${Date.now()}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch {
+        showToast('다운로드 중 오류가 발생했습니다.');
+    }
+};
+
+const generateCompose2Results = async () => {
+    if (!compose2State.background?.img) return showToast('배경 이미지를 업로드해주세요.');
+    if (!compose2State.characters.length) return showToast('캐릭터 이미지를 업로드해주세요.');
+
+    const btn = document.getElementById('btnGenerateCompose2');
+    if (btn) btn.disabled = true;
+    compose2State.results = [];
+    renderCompose2Results();
+    setCompose2Status(`합성 중... (총 ${compose2State.characters.length}장)`);
+
+    const bg = compose2State.background.img;
+    const bgWidth = bg.naturalWidth || bg.width;
+    const bgHeight = bg.naturalHeight || bg.height;
+    const { width, height } = resolveCompose2OutputSize(bgWidth, bgHeight);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = width;
+    canvas.height = height;
+
+    for (let i = 0; i < compose2State.characters.length; i += 1) {
+        const char = compose2State.characters[i];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (compose2State.bgBlurEnabled && compose2State.bgBlurStrength > 0) {
+            ctx.filter = `blur(${compose2State.bgBlurStrength}px)`;
+        } else {
+            ctx.filter = 'none';
+        }
+        ctx.drawImage(bg, 0, 0, width, height);
+        ctx.filter = 'none';
+        if (char.img) {
+            const x = Number.isFinite(char.x) ? char.x : 0;
+            const y = Number.isFinite(char.y) ? char.y : 101;
+            const drawW = Number.isFinite(char.width) ? char.width : (char.img.naturalWidth || char.img.width);
+            const drawH = Number.isFinite(char.height) ? char.height : (char.img.naturalHeight || char.img.height);
+            ctx.drawImage(char.img, x, y, drawW, drawH);
+        }
+        const dataUrl = canvas.toDataURL('image/png');
+        const rawName = char.name || `character_${i + 1}`;
+        const safeName = sanitizeFilename(stripFileExtension(rawName));
+        const baseName = safeName || `character_${i + 1}`;
+        compose2State.results.push({
+            data: dataUrl.split(',')[1],
+            filename: `${baseName}.png`,
+            sourceName: char.name,
+            x: char.x,
+            y: char.y
+        });
+        setCompose2Status(`합성 중... (${i + 1}/${compose2State.characters.length})`);
+    }
+
+    renderCompose2Results();
+    setCompose2Status('완료되었습니다.');
+    if (btn) btn.disabled = false;
+};
+
+const initCompose2 = () => {
+    const btnAttachBg = document.getElementById('btnAttachCompose2Bg');
+    const bgInput = document.getElementById('compose2BgInput');
+    const btnRemoveBg = document.getElementById('btnRemoveCompose2Bg');
+    const btnAttachChars = document.getElementById('btnAttachCompose2Chars');
+    const charInput = document.getElementById('compose2CharInput');
+    const btnClearChars = document.getElementById('btnClearCompose2Chars');
+    const btnGenerate = document.getElementById('btnGenerateCompose2');
+    const btnDownloadAll = document.getElementById('btnDownloadAllCompose2');
+    const outputSize = document.getElementById('compose2OutputSize');
+    const blurToggle = document.getElementById('compose2BlurToggle');
+    const blurRange = document.getElementById('compose2BlurRange');
+    const blurValue = document.getElementById('compose2BlurValue');
+    const blurControls = document.getElementById('compose2BlurControls');
+    const useCutout = document.getElementById('compose2UseCutout');
+
+    if (btnAttachBg && bgInput) {
+        btnAttachBg.addEventListener('click', () => { bgInput.value = ''; bgInput.click(); });
+        bgInput.addEventListener('change', handleCompose2BgUpload);
+    }
+    if (btnRemoveBg) btnRemoveBg.addEventListener('click', clearCompose2Background);
+
+    if (btnAttachChars && charInput) {
+        btnAttachChars.addEventListener('click', () => { charInput.value = ''; charInput.click(); });
+        charInput.addEventListener('change', handleCompose2CharUpload);
+    }
+    if (btnClearChars) btnClearChars.addEventListener('click', clearCompose2Characters);
+
+    if (blurToggle && blurRange && blurValue && blurControls) {
+        blurToggle.checked = compose2State.bgBlurEnabled;
+        blurRange.value = String(compose2State.bgBlurStrength);
+        blurValue.textContent = String(compose2State.bgBlurStrength);
+        blurControls.classList.toggle('is-hidden', !compose2State.bgBlurEnabled);
+
+        blurToggle.addEventListener('change', (e) => {
+            compose2State.bgBlurEnabled = e.target.checked;
+            blurControls.classList.toggle('is-hidden', !compose2State.bgBlurEnabled);
+            renderCompose2Canvas();
+            resetCompose2Results();
+        });
+
+        blurRange.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value, 10);
+            compose2State.bgBlurStrength = Number.isFinite(value) ? value : 0;
+            blurValue.textContent = String(compose2State.bgBlurStrength);
+            renderCompose2Canvas();
+            resetCompose2Results();
+        });
+    }
+
+    if (useCutout) {
+        useCutout.checked = compose2State.useCutout;
+        useCutout.addEventListener('change', (e) => {
+            compose2State.useCutout = e.target.checked;
+        });
+    }
+
+    if (outputSize) {
+        outputSize.addEventListener('change', () => {
+            renderCompose2Canvas();
+            resetCompose2Results();
+        });
+    }
+
+    if (btnGenerate) btnGenerate.addEventListener('click', () => {
+        generateCompose2Results().catch(() => showToast('합성 중 오류가 발생했습니다.'));
+    });
+    if (btnDownloadAll) btnDownloadAll.addEventListener('click', downloadAllCompose2);
+
+    renderCompose2BgPreview();
+    renderCompose2CharList();
+    renderCompose2Canvas();
+    renderCompose2Results();
+};
+
 const syncIframes = () => {
     const googleKey = localStorage.getItem('google_api_key') || '';
     const novelKey = getNovelAiKey();
@@ -2864,11 +3509,13 @@ const initIframes = () => {
 
 document.addEventListener('DOMContentLoaded', () => {
     initApiKeys();
+    initStoryDrawer();
     initMenu();
     initPromptBuilder();
     initNotesCopy();
     initMemoGenerator();
     initCompose();
+    initCompose2();
     initIframes();
 });
 

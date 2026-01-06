@@ -10,25 +10,47 @@
 </head>
 <body>
     <div class="story-app">
-        <header class="top-bar">
-            <div class="api-panel">
-                <div class="api-group">
-                    <label for="globalGoogleApiKey">Gemini API Key</label>
-                    <div class="api-row">
-                        <input type="password" id="globalGoogleApiKey" placeholder="AIza..." autocomplete="off">
-                        <button id="saveGlobalGoogleKey" class="btn btn-dark">저장</button>
-                    </div>
-                    <div class="api-status" id="googleKeyStatus"></div>
+        <div id="storyDrawerBackdrop" class="drawer-backdrop is-hidden"></div>
+        <aside id="storySettingsDrawer" class="drawer drawer-left">
+            <div class="drawer-header">
+                <div class="drawer-title">
+                    <strong>옵션</strong>
+                    <span class="eyebrow">API Keys</span>
                 </div>
-                <div class="api-group">
-                    <label for="globalNovelApiKey">NovelAI API Key</label>
-                    <div class="api-row">
-                        <input type="password" id="globalNovelApiKey" placeholder="pst-..." autocomplete="off">
-                        <button id="saveGlobalNovelKey" class="btn btn-dark">저장</button>
+                <button id="closeStorySettings" class="btn-icon" title="닫기">✕</button>
+            </div>
+            <div class="drawer-body">
+                <div class="api-panel">
+                    <div class="api-group">
+                        <label for="globalGoogleApiKey">Gemini API Key</label>
+                        <div class="api-row">
+                            <input type="password" id="globalGoogleApiKey" placeholder="AIza..." autocomplete="off">
+                            <button id="saveGlobalGoogleKey" class="btn btn-dark">저장</button>
+                        </div>
+                        <div class="api-status" id="googleKeyStatus"></div>
                     </div>
-                    <div class="api-status" id="novelKeyStatus"></div>
+                    <div class="api-group">
+                        <label for="globalNovelApiKey">NovelAI API Key</label>
+                        <div class="api-row">
+                            <input type="password" id="globalNovelApiKey" placeholder="pst-..." autocomplete="off">
+                            <button id="saveGlobalNovelKey" class="btn btn-dark">저장</button>
+                        </div>
+                        <div class="api-status" id="novelKeyStatus"></div>
+                    </div>
+                    <div class="api-group">
+                        <label for="globalPhotoRoomApiKey">PhotoRoom API Key</label>
+                        <div class="api-row">
+                            <input type="password" id="globalPhotoRoomApiKey" placeholder="photoroom_..." autocomplete="off">
+                            <button id="saveGlobalPhotoRoomKey" class="btn btn-dark">저장</button>
+                        </div>
+                        <div class="api-status" id="photoRoomKeyStatus"></div>
+                    </div>
                 </div>
             </div>
+        </aside>
+
+        <header class="top-bar">
+            <button id="openStorySettings" class="btn-icon option-btn" title="옵션">⚙</button>
             <div class="hero">
                 <span class="eyebrow">Story Maker</span>
                 <h1>스토리 제작 통합 제작기</h1>
@@ -41,6 +63,7 @@
             <button class="menu-item" data-view="story">키워드북 목록</button>
             <button class="menu-item" data-view="start">이미지 생성</button>
             <button class="menu-item" data-view="media">배경 합성</button>
+            <button class="menu-item" data-view="media2">배경 합성 2</button>
         </nav>
 
         <main class="content">
@@ -187,6 +210,15 @@
                                     <span id="memoDelayValue">0s</span>
                                 </div>
                             </div>
+                            <div class="memo-toggle">
+                                <input type="checkbox" id="memoStripMetadata">
+                                <label for="memoStripMetadata">메타데이터 제거</label>
+                            </div>
+                            <div class="memo-toggle">
+                                <input type="checkbox" id="memoUseSequentialTitle">
+                                <label for="memoUseSequentialTitle">img 제목 id로 생성</label>
+                            </div>
+                            <p class="helper-text">생성된 이미지를 다시 인코딩해 메타데이터를 제거합니다.</p>
                             <button id="openMemoAdvancedSettings" class="btn btn-outline btn-block">고급 설정</button>
                         </div>
                     </aside>
@@ -230,7 +262,9 @@
                             <div class="memo-header-actions">
                                 <button id="memoImportJson" class="btn-icon" title="가져오기">📂</button>
                                 <button id="memoExportJson" class="btn-icon" title="내보내기">💾</button>
+                                <button id="memoDeleteByImages" class="btn-icon" title="이미지 이름으로 메모 삭제">🧹</button>
                                 <input type="file" id="memoJsonFile" accept=".json" hidden>
+                                <input type="file" id="memoDeleteImagesFile" accept="image/*" multiple hidden>
                             </div>
                         </div>
                         <div class="memo-controls">
@@ -243,7 +277,7 @@
                 </div>
             </section>
 
-            <section id="view-media" class="view">
+            <section id="view-media" class="view compact">
                 <div class="view-header">
                     <h2>배경 합성</h2>
                     <p>Gemini 배경 합성 기능과 동일하게 동작합니다.</p>
@@ -312,6 +346,100 @@
                         </div>
                         <div id="composeResultList" class="compose-result-list">
                             <div class="compose-empty">배경+캐릭터를 선택하고 합성을 시작하세요.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-media2" class="view compact">
+                <div class="view-header">
+                    <h2>배경 합성 2</h2>
+                    <p>로컬 합성: 배경 1장 + 캐릭터 여러 장을 좌표로 합성합니다.</p>
+                </div>
+                <div class="compose-layout" id="compose2Layout">
+                    <div class="compose-left">
+                        <div class="compose-section">
+                            <div class="compose-section-header">
+                                <div>
+                                    <h3>배경 이미지</h3>
+                                    <p>1장만 선택</p>
+                                </div>
+                                <div class="compose-actions">
+                                    <input type="file" id="compose2BgInput" accept="image/*" hidden>
+                                    <button id="btnAttachCompose2Bg" class="btn btn-outline btn-sm">배경 업로드</button>
+                                    <button id="btnRemoveCompose2Bg" class="btn btn-outline btn-sm">지우기</button>
+                                </div>
+                            </div>
+                            <div id="compose2BgPreview" class="compose-preview-box">
+                                <span class="muted">배경 이미지가 없습니다.</span>
+                            </div>
+                            <div class="compose2-option">
+                                <label class="field-label">
+                                    <input type="checkbox" id="compose2BlurToggle">
+                                    배경 블러 처리
+                                </label>
+                                <div id="compose2BlurControls" class="compose2-blur-controls is-hidden">
+                                    <input type="range" id="compose2BlurRange" min="0" max="30" step="1" value="8">
+                                    <span id="compose2BlurValue">8</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="compose-section">
+                            <div class="compose-section-header">
+                                <div>
+                                    <h3>캐릭터 이미지</h3>
+                                    <p>여러 장 선택 + 좌표 입력 (px)</p>
+                                </div>
+                                <div class="compose-actions">
+                                    <input type="file" id="compose2CharInput" accept="image/*" multiple hidden>
+                                    <button id="btnAttachCompose2Chars" class="btn btn-outline btn-sm">캐릭터 업로드</button>
+                                    <button id="btnClearCompose2Chars" class="btn btn-outline btn-sm">지우기</button>
+                                </div>
+                            </div>
+                            <div id="compose2CharList" class="compose-thumb-list compose2-list">
+                                <span class="muted">캐릭터 이미지를 추가해주세요.</span>
+                            </div>
+                            <div class="compose2-option">
+                                <label class="field-label">
+                                    <input type="checkbox" id="compose2UseCutout" checked>
+                                    캐릭터 누끼 처리 (PhotoRoom)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="compose-section">
+                            <label class="field-label" for="compose2OutputSize">미리보기/다운로드 크기</label>
+                            <select id="compose2OutputSize" class="input-field">
+                                <option value="background">배경 원본 크기</option>
+                                <option value="1024x1024">1024 x 1024</option>
+                                <option value="832x1216">832 x 1216</option>
+                                <option value="1216x832">1216 x 832</option>
+                            </select>
+                            <p class="helper-text">배경은 캔버스 크기에 맞춰 조정되고, 캐릭터는 개별 크기를 사용합니다.</p>
+                        </div>
+
+                        <div class="compose-section">
+                            <div class="compose-controls">
+                                <button id="btnGenerateCompose2" class="btn btn-dark">합성 시작</button>
+                                <button id="btnDownloadAllCompose2" class="btn btn-outline btn-sm">전체 저장</button>
+                            </div>
+                            <p id="compose2Status" class="compose-status"></p>
+                        </div>
+                    </div>
+
+                    <div class="compose-right">
+                        <div class="compose-section-header">
+                            <div>
+                                <h3>미리보기</h3>
+                                <p>선택한 캐릭터 1장만 표시</p>
+                            </div>
+                        </div>
+                        <div class="compose-preview-box" style="padding: 6px;">
+                            <canvas id="compose2Canvas" style="width: 100%; height: auto;"></canvas>
+                        </div>
+                        <div id="compose2ResultList" class="compose-result-list">
+                            <div class="compose-empty">합성 결과가 여기에 표시됩니다.</div>
                         </div>
                     </div>
                 </div>

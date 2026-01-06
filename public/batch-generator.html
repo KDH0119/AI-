@@ -8,22 +8,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <aside class="panel settings-panel">
-            <div class="panel-header">
-                <h1>Novel AI Image Add Generator</h1>
-                <span class="version">v2.0 (Web)</span>
+    <div class="app-shell">
+        <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+
+        <aside id="settingsDrawer" class="drawer drawer-left">
+            <div class="drawer-header">
+                <div class="drawer-title">
+                    <strong>옵션</strong>
+                    <span class="version">v2.0 (Web)</span>
+                </div>
+                <button id="closeSettingsDrawer" class="btn-icon" title="닫기">✕</button>
             </div>
-            
-            <div class="scroll-content">
+            <div class="drawer-body scroll-content">
                 <section class="section">
                     <h2>API 설정</h2>
-                    
                     <div class="input-group">
                         <label>NovelAI API Key (pst-...)</label>
                         <div class="row">
                             <input type="password" id="apiKey" placeholder="pst-..." class="input-text">
-                            <button id="saveApiKey" class="btn btn-black">저장</button>
+                            <button id="saveApiKey" class="btn btn-black btn-sm">저장</button>
                         </div>
                     </div>
 
@@ -31,10 +34,12 @@
                         <label>Gemini API Key (AIza...)</label>
                         <div class="row">
                             <input type="password" id="googleApiKey" placeholder="AIza..." class="input-text">
-                            <button id="saveGoogleApiKey" class="btn btn-black">저장</button>
+                            <button id="saveGoogleApiKey" class="btn btn-black btn-sm">저장</button>
                         </div>
                     </div>
                 </section>
+
+                <section class="section">
                     <h2>공통 태그</h2>
                     <div class="input-group">
                         <label>작가/화풍 태그</label>
@@ -71,53 +76,78 @@
                     <div class="row mt-2">
                         <button id="openAdvancedSettings" class="btn btn-sm btn-text">고급 설정 ></button>
                     </div>
-                        <div class="row mt-4">
+
+                    <div class="row mt-4">
                         <a href="gemini.html" class="btn btn-outline btn-block gemini-mode-btn" style="text-decoration: none; text-align: center;">
                             Gemini Mode
                         </a>
+                    </div>
                 </section>
             </div>
         </aside>
 
-        <main class="panel preview-panel">
-            <div class="preview-header">
-                <div class="header-left-group" style="display: flex; align-items: center; gap: 16px;">
-                    
+        <aside id="memoDrawer" class="drawer drawer-right">
+            <div class="drawer-header">
+                <div class="drawer-title">
+                    <strong>메모장</strong>
+                    <span class="count-badge">0/50</span>
+                </div>
+                <button id="closeMemoDrawer" class="btn-icon" title="닫기">✕</button>
+            </div>
+            <div class="memo-controls">
+                <div class="header-actions">
+                    <button id="importMemoJson" class="btn-icon" title="가져오기">📂</button>
+                    <button id="exportMemoJson" class="btn-icon" title="내보내기">💾</button>
+                    <input type="file" id="memoJsonFile" accept=".json" hidden>
+                    <textarea id="memoJsonOutput" hidden></textarea>
+                </div>
+                <button id="addMemoPad" class="btn btn-black btn-sm">+ 새 메모</button>
+            </div>
+            <div id="memoList" class="memo-list scroll-content"></div>
+        </aside>
+
+        <main class="main-panel">
+            <div class="main-topbar">
+                <button id="openSettingsDrawer" class="btn-icon" title="옵션">⚙</button>
+
+                <div class="main-topbar-center">
                     <div class="mode-switcher">
                         <button id="modeContinuous" class="mode-btn active">연속 생성</button>
                         <button id="modeMemoPad" class="mode-btn">메모장 생성</button>
                         <button id="modeCharacter" class="mode-btn">캐릭터 생성</button>
                     </div>
 
-                    <div class="delay-slider-wrapper" style="display: flex; align-items: center; gap: 8px; padding-left: 8px; border-left: 1px solid #e4e4e7;">
-                        <span style="font-size: 12px; font-weight: 600; color: #71717a;">딜레이</span>
-                        <input type="range" id="requestDelay" value="0" min="0" max="10" step="0.1" style="width: 100px; cursor: pointer;">
-                        <span id="delayDisplay" style="font-size: 12px; font-weight: bold; color: #000; min-width: 30px;">0s</span>
+                    <div class="delay-slider-wrapper">
+                        <span class="delay-label">딜레이</span>
+                        <input type="range" id="requestDelay" value="0" min="0" max="10" step="0.1">
+                        <span id="delayDisplay" class="delay-value">0s</span>
                     </div>
                 </div>
-                
-                <div class="actions">
-                    <div id="continuousSettings" class="action-group">
-                        <input type="number" id="imageCount" value="1" min="1" max="100" class="input-number" style="width: 60px;">
-                        <span class="unit" style="font-size: 13px; margin-right: 8px;">장</span>
-                        <button id="generateContinuous" class="btn btn-black btn-lg">생성 시작</button>
-                    </div>
 
-                    <div id="memoPadSettings" class="action-group hidden">
-                        <span class="info-text" style="font-size: 13px; color: var(--muted-text); margin-right: 12px;">메모장 일괄 생성</span>
-                        <button id="generateMemoPad" class="btn btn-black btn-lg">전체 생성</button>
-                    </div>
+                <button id="openMemoDrawer" class="btn-icon" title="메모장">☰</button>
+            </div>
 
-                    <div id="characterSettings" class="action-group hidden" style="align-items: center;">
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 8px;">
-                            <input type="file" id="charRefImageInput" accept="image/*" style="display: none;">
-                            <button id="btnUploadCharRef" class="btn btn-outline btn-sm" style="margin-bottom: 2px;">이미지 업로드</button>
-                            <span id="charRefStatus" style="font-size: 10px; color: var(--accent-color);">이미지 없음</span>
-                        </div>
-                        <input type="number" id="charImageCount" value="1" min="1" max="100" class="input-number" style="width: 60px;">
-                        <span class="unit" style="font-size: 13px; margin-right: 8px;">장</span>
-                        <button id="generateCharacter" class="btn btn-black btn-lg">캐릭터 생성</button>
+            <div class="main-actions">
+                <div id="continuousSettings" class="action-group">
+                    <input type="number" id="imageCount" value="1" min="1" max="100" class="input-number">
+                    <span class="unit">장</span>
+                    <button id="generateContinuous" class="btn btn-black btn-sm">생성 시작</button>
+                </div>
+
+                <div id="memoPadSettings" class="action-group hidden">
+                    <span class="info-text">메모장 일괄 생성</span>
+                    <button id="generateMemoPad" class="btn btn-black btn-sm">전체 생성</button>
+                </div>
+
+                <div id="characterSettings" class="action-group hidden">
+                    <div class="char-ref">
+                        <input type="file" id="charRefImageInput" accept="image/*" hidden>
+                        <button id="btnUploadCharRef" class="btn btn-outline btn-sm">이미지 업로드</button>
+                        <span id="charRefStatus" class="char-ref-status">이미지 없음</span>
                     </div>
+                    <input type="number" id="charImageCount" value="1" min="1" max="100" class="input-number">
+                    <span class="unit">장</span>
+                    <button id="generateCharacter" class="btn btn-black btn-sm">캐릭터 생성</button>
                 </div>
             </div>
 
@@ -138,26 +168,9 @@
             </div>
 
             <div class="preview-footer">
-                <button id="downloadAll" class="btn btn-outline btn-block" disabled>전체 저장 (ZIP)</button>
+                <button id="downloadAll" class="btn btn-outline btn-block btn-sm" disabled>전체 저장 (ZIP)</button>
             </div>
         </main>
-
-        <aside class="panel memo-panel">
-            <div class="panel-header">
-                <h2>메모장</h2>
-                <div class="header-actions">
-                    <button id="importMemoJson" class="btn-icon" title="가져오기">📂</button>
-                    <button id="exportMemoJson" class="btn-icon" title="내보내기">💾</button>
-                    <input type="file" id="memoJsonFile" accept=".json" hidden>
-                    <textarea id="memoJsonOutput" hidden></textarea>
-                </div>
-            </div>
-            <div class="memo-controls">
-                <span class="count-badge">0/50</span>
-                <button id="addMemoPad" class="btn btn-black btn-sm">+ 새 메모</button>
-            </div>
-            <div id="memoList" class="memo-list scroll-content"></div>
-        </aside>
     </div>
 
     <div id="memoModal" class="modal hidden">

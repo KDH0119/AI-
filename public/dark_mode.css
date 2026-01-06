@@ -405,3 +405,13 @@ body.dark-mode {
 .dark-mode ::-webkit-scrollbar-thumb:hover {
     background: #555555;
 }
+
+/* =========================
+   Mobile Responsive (dark-mode)
+   ========================= */
+@media (max-width: 520px) {
+    .dark-mode .modal-content {
+        width: 94vw;
+        max-width: 94vw;
+    }
+}

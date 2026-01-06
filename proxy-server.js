@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { Blob } = require('buffer');
 const CHAT_MODEL_CONFIG = {
     'gemini-3-pro-preview': { label: 'Gemini 3 Pro' },
     'gemini-2.5-pro': { label: 'Gemini 2.5 Pro' }
@@ -72,6 +73,78 @@ app.post('/api/novelai/generate-image', async (req, res) => {
         res.send(buffer);
     } catch (error) {
         console.error('!! 프록시 서버 오류:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==========================================
+// PhotoRoom Background Removal 프록시
+// ==========================================
+app.post('/api/photoroom/segment', async (req, res) => {
+    try {
+        const {
+            apiKey,
+            image,
+            imageBase64,
+            imageMimeType,
+            bg_color,
+            bgColor,
+            format,
+            size,
+            crop,
+            channels,
+            despill
+        } = req.body || {};
+
+        const rawImage = imageBase64 || image;
+        if (!apiKey) return res.status(400).json({ error: 'apiKey가 필요합니다.' });
+        if (!rawImage) return res.status(400).json({ error: 'imageBase64 또는 image가 필요합니다.' });
+
+        let base64 = rawImage;
+        let mimeType = imageMimeType || 'image/png';
+        if (typeof rawImage === 'string' && rawImage.startsWith('data:')) {
+            const match = rawImage.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+                mimeType = match[1];
+                base64 = match[2];
+            }
+        }
+
+        const buffer = Buffer.from(base64, 'base64');
+        const blob = new Blob([buffer], { type: mimeType });
+        const ext = mimeType.split('/')[1] || 'png';
+
+        const form = new FormData();
+        form.append('image_file', blob, `upload.${ext}`);
+        const bgValue = bgColor || bg_color;
+        if (bgValue) form.append('bg_color', bgValue);
+        if (format) form.append('format', format);
+        if (size) form.append('size', size);
+        if (typeof crop !== 'undefined') form.append('crop', String(crop));
+        if (channels) form.append('channels', channels);
+        if (typeof despill !== 'undefined') form.append('despill', String(despill));
+
+        const response = await fetch('https://sdk.photoroom.com/v1/segment', {
+            method: 'POST',
+            headers: { 'x-api-key': apiKey },
+            body: form
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            return res.status(response.status).json({ error: errorText || 'PhotoRoom API Error' });
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const outBuffer = Buffer.from(arrayBuffer);
+        const contentType = response.headers.get('content-type') || 'image/png';
+
+        res.json({
+            image: outBuffer.toString('base64'),
+            mimeType: contentType
+        });
+    } catch (error) {
+        console.error('PhotoRoom Proxy Error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });

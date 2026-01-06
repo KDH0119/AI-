@@ -46,14 +46,81 @@ body::before {
     flex-direction: column;
 }
 
+.drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 50;
+}
+
+.drawer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 360px;
+    max-width: 92vw;
+    background: #fff;
+    border: 1px solid var(--line);
+    box-shadow: 0 16px 32px rgba(0,0,0,0.14);
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform: translateX(-105%);
+    transition: transform 0.22s ease;
+}
+
+.drawer.drawer-left {
+    left: 0;
+    right: auto;
+}
+
+.drawer.is-open.drawer-left {
+    transform: translateX(0);
+}
+
+.drawer-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(8px);
+}
+
+.drawer-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.drawer-body {
+    padding: 16px;
+    overflow-y: auto;
+}
+
 .top-bar {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
     gap: 24px;
     padding: 20px 28px;
     background: rgba(255, 255, 255, 0.92);
     border-bottom: 1px solid var(--line);
     backdrop-filter: blur(8px);
+}
+
+.option-btn {
+    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #fff;
+}
+
+.option-btn:hover {
+    background: #f7f1e9;
 }
 
 .api-panel {
@@ -130,6 +197,7 @@ body::before {
 .menu-bar {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 18px;
     padding: 0 20px;
     border-bottom: 1px solid var(--line);
@@ -175,6 +243,19 @@ body::before {
     min-height: 0;
     overflow-y: auto;
     animation: fadeUp 0.35s ease;
+}
+
+.view.compact {
+    gap: 16px;
+    padding: 18px 20px;
+}
+
+.view.compact .view-header h2 {
+    font-size: 18px;
+}
+
+.view.compact .view-header p {
+    font-size: 12px;
 }
 
 .view.active {
@@ -781,6 +862,11 @@ body::before {
     align-items: stretch;
 }
 
+.view.compact .compose-layout {
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 12px;
+}
+
 .compose-left,
 .compose-right {
     background: var(--card);
@@ -792,6 +878,12 @@ body::before {
     flex-direction: column;
     gap: 14px;
     min-height: 0;
+}
+
+.view.compact .compose-left,
+.view.compact .compose-right {
+    padding: 12px;
+    border-radius: 16px;
 }
 
 .compose-section {
@@ -834,6 +926,11 @@ body::before {
     padding: 10px;
 }
 
+.view.compact .compose-preview-box {
+    min-height: 90px;
+    padding: 8px;
+}
+
 .compose-preview-box img {
     width: 100%;
     max-height: 160px;
@@ -850,6 +947,10 @@ body::before {
     padding: 8px;
     background: #fff;
     min-height: 110px;
+}
+
+.view.compact .compose-thumb-list {
+    min-height: 90px;
 }
 
 .compose-thumb {
@@ -879,6 +980,124 @@ body::before {
     cursor: pointer;
 }
 
+.compose2-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.compose2-item {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 10px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    align-items: center;
+}
+
+.compose2-item.is-active {
+    border-color: #d7b67a;
+    box-shadow: 0 0 0 2px rgba(215, 182, 122, 0.25);
+}
+
+.compose2-thumb {
+    position: relative;
+    width: 72px;
+    height: 72px;
+}
+
+.compose2-thumb img {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: #fff;
+}
+
+.compose2-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    border: none;
+    background: #ef4444;
+    color: #fff;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.compose2-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.compose2-name {
+    font-size: 11px;
+    color: var(--muted);
+    word-break: break-all;
+}
+
+.compose2-coords {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+}
+
+.compose2-coords label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.compose2-coords input {
+    width: 64px;
+    padding: 4px 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.compose2-option {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.compose2-option .field-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 0;
+}
+
+.compose2-blur-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.compose2-blur-controls input[type="range"] {
+    flex: 1;
+}
+
+.compose2-blur-controls span {
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 24px;
+    text-align: right;
+}
+
 .compose-controls {
     display: flex;
     gap: 8px;
@@ -900,6 +1119,10 @@ body::before {
     min-height: 240px;
 }
 
+.view.compact .compose-result-list {
+    min-height: 200px;
+}
+
 .compose-card {
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -914,6 +1137,10 @@ body::before {
     height: 220px;
     object-fit: contain;
     background: #f7f1e9;
+}
+
+.view.compact .compose-card img {
+    height: 180px;
 }
 
 .compose-card .info {
@@ -994,6 +1221,9 @@ body::before {
     .prompt-grid {
         grid-template-columns: 1fr;
     }
+    .hero {
+        display: none;
+    }
 }
 
 @media (max-width: 520px) {
@@ -1004,7 +1234,26 @@ body::before {
         gap: 12px;
     }
     .top-bar {
-        padding: 16px;
+        padding: 12px 16px;
+        flex-direction: row;
+        justify-content: flex-start;
+    }
+    .option-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    .api-panel {
+        width: 100%;
+        min-width: 0;
+    }
+    .api-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .api-row .btn {
+        width: 100%;
+        justify-content: center;
     }
     .view {
         padding: 16px;

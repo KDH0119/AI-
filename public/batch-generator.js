@@ -154,6 +154,34 @@ function sanitizeFilename(filename) {
 
 // ============ Event Listeners ============
 function initEventListeners() {
+    // 드로어(옵션/메모장) 토글
+    const settingsDrawer = document.getElementById('settingsDrawer');
+    const memoDrawer = document.getElementById('memoDrawer');
+    const backdrop = document.getElementById('drawerBackdrop');
+
+    const openDrawer = (target) => {
+        if (!settingsDrawer || !memoDrawer || !backdrop) return;
+        settingsDrawer.classList.remove('is-open');
+        memoDrawer.classList.remove('is-open');
+        if (target === 'settings') settingsDrawer.classList.add('is-open');
+        if (target === 'memo') memoDrawer.classList.add('is-open');
+        backdrop.classList.remove('hidden');
+    };
+
+    const closeDrawers = () => {
+        if (!settingsDrawer || !memoDrawer || !backdrop) return;
+        settingsDrawer.classList.remove('is-open');
+        memoDrawer.classList.remove('is-open');
+        backdrop.classList.add('hidden');
+    };
+
+    document.getElementById('openSettingsDrawer')?.addEventListener('click', () => openDrawer('settings'));
+    document.getElementById('closeSettingsDrawer')?.addEventListener('click', closeDrawers);
+    document.getElementById('openMemoDrawer')?.addEventListener('click', () => openDrawer('memo'));
+    document.getElementById('closeMemoDrawer')?.addEventListener('click', closeDrawers);
+    backdrop?.addEventListener('click', closeDrawers);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawers(); });
+
     // API 키 저장
     document.getElementById('saveApiKey').addEventListener('click', () => {
         state.apiKey = document.getElementById('apiKey').value.trim();
