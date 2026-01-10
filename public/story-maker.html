@@ -64,6 +64,7 @@
             <button class="menu-item" data-view="start">이미지 생성</button>
             <button class="menu-item" data-view="media">배경 합성</button>
             <button class="menu-item" data-view="media2">배경 합성 2</button>
+            <button class="menu-item" data-view="webp">무손실 WebP</button>
         </nav>
 
         <main class="content">
@@ -440,6 +441,53 @@
                         </div>
                         <div id="compose2ResultList" class="compose-result-list">
                             <div class="compose-empty">합성 결과가 여기에 표시됩니다.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-webp" class="view compact">
+                <div class="view-header">
+                    <h2>무손실 WebP 변환</h2>
+                    <p>드래그&드롭, 폴더 업로드로 일괄 변환합니다.</p>
+                </div>
+                <div class="compose-layout webp-layout">
+                    <div class="compose-left">
+                        <div class="compose-section webp-section">
+                            <div class="compose-section-header">
+                                <div>
+                                    <h3>변환 설정</h3>
+                                    <p>메타데이터 제거 + 무손실</p>
+                                </div>
+                            </div>
+                            <div id="webpDropzone" class="compose-preview-box webp-dropzone">
+                                <div class="webp-dropzone-text">이미지/폴더를 여기로 드래그하세요.</div>
+                                <div class="webp-dropzone-sub">파일명 유지, 결과는 WebP</div>
+                            </div>
+                            <div class="compose-controls webp-controls">
+                                <input type="file" id="webpFileInput" accept="image/*" multiple hidden>
+                                <input type="file" id="webpFolderInput" accept="image/*" webkitdirectory directory multiple hidden>
+                                <button id="btnAddWebpFiles" class="btn btn-outline btn-sm">파일 추가</button>
+                                <button id="btnAddWebpFolder" class="btn btn-outline btn-sm">폴더 추가</button>
+                                <button id="btnClearWebpQueue" class="btn btn-outline btn-sm">비우기</button>
+                            </div>
+                            <div class="compose-controls webp-controls">
+                                <button id="btnConvertWebp" class="btn btn-dark">변환 시작</button>
+                                <button id="btnDownloadAllWebp" class="btn btn-outline btn-sm">전체 저장</button>
+                            </div>
+                            <p id="webpStatus" class="compose-status"></p>
+                            <div id="webpFileList" class="webp-list"></div>
+                        </div>
+                    </div>
+                    <div class="compose-right">
+                        <div class="compose-section-header">
+                            <div>
+                                <h3>변환 결과</h3>
+                                <p>파일 수만큼 출력</p>
+                            </div>
+                        </div>
+                        <div id="webpResultList" class="compose-result-list webp-result-list">
+                            <div class="compose-empty">변환 결과가 여기에 표시됩니다.</div>
                         </div>
                     </div>
                 </div>

@@ -3454,6 +3454,366 @@ const initCompose2 = () => {
     renderCompose2Results();
 };
 
+const webpState = {
+    files: [],
+    results: [],
+    isConverting: false
+};
+
+const webpElements = () => ({
+    dropzone: document.getElementById('webpDropzone'),
+    fileInput: document.getElementById('webpFileInput'),
+    folderInput: document.getElementById('webpFolderInput'),
+    addFiles: document.getElementById('btnAddWebpFiles'),
+    addFolder: document.getElementById('btnAddWebpFolder'),
+    clearQueue: document.getElementById('btnClearWebpQueue'),
+    convert: document.getElementById('btnConvertWebp'),
+    downloadAll: document.getElementById('btnDownloadAllWebp'),
+    status: document.getElementById('webpStatus'),
+    fileList: document.getElementById('webpFileList'),
+    resultList: document.getElementById('webpResultList')
+});
+
+const formatBytes = (bytes) => {
+    if (!Number.isFinite(bytes)) return '0B';
+    if (bytes < 1024) return `${bytes}B`;
+    const units = ['KB', 'MB', 'GB'];
+    let value = bytes / 1024;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex += 1;
+    }
+    return `${value.toFixed(value >= 10 ? 1 : 2)}${units[unitIndex]}`;
+};
+
+const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('파일 읽기 실패'));
+    reader.readAsDataURL(blob);
+});
+
+const webpSetStatus = (text) => {
+    const el = webpElements().status;
+    if (el) el.textContent = text || '';
+};
+
+const webpSetBusy = (busy) => {
+    webpState.isConverting = busy;
+    const el = webpElements();
+    if (el.convert) el.convert.disabled = busy;
+    if (el.addFiles) el.addFiles.disabled = busy;
+    if (el.addFolder) el.addFolder.disabled = busy;
+    if (el.clearQueue) el.clearQueue.disabled = busy;
+};
+
+const webpFileKey = (file) => `${file.name}|${file.size}|${file.lastModified}|${file.webkitRelativePath || ''}`;
+
+const webpIsImageFile = (file) => {
+    if (!file) return false;
+    if (file.type && file.type.startsWith('image/')) return true;
+    const name = (file.name || '').toLowerCase();
+    return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'].some(ext => name.endsWith(ext));
+};
+
+const webpAddFiles = (files) => {
+    const existing = new Set(webpState.files.map(item => item.key));
+    const list = Array.from(files || []).filter(file => webpIsImageFile(file));
+    list.forEach((file) => {
+        const key = webpFileKey(file);
+        if (existing.has(key)) return;
+        existing.add(key);
+        webpState.files.push({
+            id: `webp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            file,
+            key
+        });
+    });
+    webpRenderFileList();
+};
+
+const webpClearQueue = () => {
+    webpState.files = [];
+    webpState.results = [];
+    webpRenderFileList();
+    webpRenderResults();
+    webpSetStatus('');
+};
+
+const webpRenderFileList = () => {
+    const el = webpElements().fileList;
+    if (!el) return;
+    el.innerHTML = '';
+    if (!webpState.files.length) {
+        el.innerHTML = '<div class="compose-empty">추가된 파일이 없습니다.</div>';
+        return;
+    }
+    webpState.files.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'webp-item';
+        const info = document.createElement('div');
+        info.className = 'webp-item-info';
+        const name = document.createElement('div');
+        name.className = 'webp-item-name';
+        name.textContent = item.file.webkitRelativePath || item.file.name;
+        const size = document.createElement('div');
+        size.className = 'webp-item-size';
+        size.textContent = formatBytes(item.file.size);
+        info.appendChild(name);
+        info.appendChild(size);
+        const remove = document.createElement('button');
+        remove.className = 'btn btn-outline btn-sm';
+        remove.textContent = '삭제';
+        remove.addEventListener('click', () => {
+            webpState.files = webpState.files.filter(f => f.id !== item.id);
+            webpRenderFileList();
+        });
+        row.appendChild(info);
+        row.appendChild(remove);
+        el.appendChild(row);
+    });
+};
+
+const webpRenderResults = () => {
+    const el = webpElements().resultList;
+    const downloadAll = webpElements().downloadAll;
+    if (!el) return;
+    el.innerHTML = '';
+    if (downloadAll) downloadAll.disabled = webpState.results.length === 0;
+    if (!webpState.results.length) {
+        el.innerHTML = '<div class="compose-empty">변환 결과가 여기에 표시됩니다.</div>';
+        return;
+    }
+    webpState.results.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'compose-card';
+        const img = document.createElement('img');
+        img.src = item.dataUrl;
+        img.alt = item.filename || `webp-${idx + 1}`;
+        const info = document.createElement('div');
+        info.className = 'info';
+        const meta = document.createElement('div');
+        const name = document.createElement('div');
+        name.textContent = item.filename;
+        const size = document.createElement('div');
+        const ratio = item.sizeIn ? Math.round((item.sizeOut / item.sizeIn) * 100) : 0;
+        size.textContent = `${formatBytes(item.sizeOut)} (${ratio}%)`;
+        meta.appendChild(name);
+        meta.appendChild(size);
+        const btn = document.createElement('button');
+        btn.textContent = '저장';
+        btn.addEventListener('click', () => webpDownloadSingle(item));
+        info.appendChild(meta);
+        info.appendChild(btn);
+        card.appendChild(img);
+        card.appendChild(info);
+        el.appendChild(card);
+    });
+};
+
+const webpDownloadSingle = (item) => {
+    const link = document.createElement('a');
+    link.href = item.dataUrl;
+    link.download = item.filename || 'image.webp';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+const webpDownloadAll = async () => {
+    if (!webpState.results.length) return showToast('다운로드할 결과가 없습니다.');
+    if (typeof JSZip === 'undefined') return showToast('JSZip을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+    try {
+        const zip = new JSZip();
+        webpState.results.forEach((item) => {
+            const base64 = item.dataUrl.split(',')[1];
+            zip.file(item.filename || 'image.webp', base64, { base64: true });
+        });
+        const content = await zip.generateAsync({ type: 'blob' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `webp_lossless_${Date.now()}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (error) {
+        console.error(error);
+        showToast('다운로드 중 오류가 발생했습니다.');
+    }
+};
+
+const getWebpOutputName = (fileName, existing) => {
+    const base = stripFileExtension(fileName || 'image') || 'image';
+    let name = `${base}.webp`;
+    if (!existing.has(name)) {
+        existing.add(name);
+        return name;
+    }
+    let idx = 2;
+    while (existing.has(`${base}_${idx}.webp`)) idx += 1;
+    name = `${base}_${idx}.webp`;
+    existing.add(name);
+    return name;
+};
+
+const convertWebpBatch = async () => {
+    if (!webpState.files.length) return showToast('변환할 파일을 추가해주세요.');
+    const apiBase = getApiBaseUrl();
+    webpState.results = [];
+    webpRenderResults();
+    webpSetBusy(true);
+    webpSetStatus(`변환 중... (0/${webpState.files.length})`);
+
+    const usedNames = new Set();
+
+    try {
+        for (let i = 0; i < webpState.files.length; i += 1) {
+            const item = webpState.files[i];
+            webpSetStatus(`변환 중... (${i + 1}/${webpState.files.length})`);
+
+            const form = new FormData();
+            form.append('file', item.file, item.file.name);
+            form.append('effort', '6');
+            form.append('lossless', 'true');
+
+            const response = await fetch(`${apiBase}/api/tools/convert-webp`, {
+                method: 'POST',
+                body: form
+            });
+
+            if (!response.ok) {
+                throw new Error(`변환 실패: ${item.file.name}`);
+            }
+
+            const blob = await response.blob();
+            const dataUrl = await blobToDataUrl(blob);
+            const filename = getWebpOutputName(item.file.name, usedNames);
+
+            webpState.results.push({
+                filename,
+                sourceName: item.file.name,
+                dataUrl,
+                sizeIn: item.file.size,
+                sizeOut: blob.size
+            });
+            webpRenderResults();
+        }
+        webpSetStatus('변환이 완료되었습니다.');
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || '변환 중 오류가 발생했습니다.');
+        webpSetStatus('변환 중 오류가 발생했습니다.');
+    } finally {
+        webpSetBusy(false);
+    }
+};
+
+const webpReadFileEntry = (entry) => new Promise((resolve) => {
+    entry.file((file) => {
+        if (!file) return resolve([]);
+        if (entry.fullPath && !file.webkitRelativePath) {
+            try {
+                Object.defineProperty(file, 'webkitRelativePath', { value: entry.fullPath.replace(/^\//, '') });
+            } catch {}
+        }
+        resolve([file]);
+    });
+});
+
+const webpReadDirectoryEntry = (entry) => new Promise((resolve) => {
+    const reader = entry.createReader();
+    const files = [];
+    const readEntries = () => {
+        reader.readEntries(async (entries) => {
+            if (!entries.length) {
+                resolve(files);
+                return;
+            }
+            for (const child of entries) {
+                if (child.isDirectory) {
+                    const nested = await webpReadDirectoryEntry(child);
+                    files.push(...nested);
+                } else if (child.isFile) {
+                    const nested = await webpReadFileEntry(child);
+                    files.push(...nested);
+                }
+            }
+            readEntries();
+        });
+    };
+    readEntries();
+});
+
+const webpGetFilesFromDrop = async (dataTransfer) => {
+    if (!dataTransfer) return [];
+    const items = Array.from(dataTransfer.items || []);
+    if (!items.length) return Array.from(dataTransfer.files || []);
+
+    const fileLists = await Promise.all(items.map(async (item) => {
+        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+        if (entry) {
+            if (entry.isDirectory) return webpReadDirectoryEntry(entry);
+            if (entry.isFile) return webpReadFileEntry(entry);
+        }
+        const file = item.getAsFile ? item.getAsFile() : null;
+        return file ? [file] : [];
+    }));
+
+    return fileLists.flat();
+};
+
+const initWebpConverter = () => {
+    const el = webpElements();
+    if (!el.dropzone) return;
+
+    const openFiles = () => {
+        if (el.fileInput) {
+            el.fileInput.value = '';
+            el.fileInput.click();
+        }
+    };
+    const openFolder = () => {
+        if (el.folderInput) {
+            el.folderInput.value = '';
+            el.folderInput.click();
+        }
+    };
+
+    el.addFiles?.addEventListener('click', openFiles);
+    el.addFolder?.addEventListener('click', openFolder);
+    el.clearQueue?.addEventListener('click', webpClearQueue);
+    el.convert?.addEventListener('click', () => {
+        if (!webpState.isConverting) convertWebpBatch();
+    });
+    el.downloadAll?.addEventListener('click', webpDownloadAll);
+
+    el.fileInput?.addEventListener('change', (event) => {
+        webpAddFiles(event.target.files || []);
+    });
+    el.folderInput?.addEventListener('change', (event) => {
+        webpAddFiles(event.target.files || []);
+    });
+
+    el.dropzone.addEventListener('click', openFiles);
+    el.dropzone.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        el.dropzone.classList.add('is-dragover');
+    });
+    el.dropzone.addEventListener('dragleave', () => {
+        el.dropzone.classList.remove('is-dragover');
+    });
+    el.dropzone.addEventListener('drop', async (event) => {
+        event.preventDefault();
+        el.dropzone.classList.remove('is-dragover');
+        const files = await webpGetFilesFromDrop(event.dataTransfer);
+        webpAddFiles(files);
+    });
+
+    webpRenderFileList();
+    webpRenderResults();
+};
+
 const syncIframes = () => {
     const googleKey = localStorage.getItem('google_api_key') || '';
     const novelKey = getNovelAiKey();
@@ -3516,7 +3876,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initMemoGenerator();
     initCompose();
     initCompose2();
+    initWebpConverter();
     initIframes();
 });
-
-

@@ -60,10 +60,6 @@
         el.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
     function textMatches(text, keywords) {
         if (!text) return false;
         return keywords.some(keyword => text.includes(keyword));
@@ -97,125 +93,12 @@
         });
     }
 
-    function findCardRoot(field) {
-        let node = field;
-        for (let i = 0; i < 6 && node; i += 1) {
-            if (node.querySelector) {
-                const text = (node.textContent || '');
-                if (text.includes('이미지 변경') || text.includes('코드 복사')) {
-                    return node;
-                }
-            }
-            node = node.parentElement;
-        }
-        return field.closest('section,article,li,div') || field.parentElement;
-    }
-
-    function findEditButton(card) {
-        const buttons = Array.from(card.querySelectorAll('button'));
-        const isDelete = (value) => /(삭제|지우기|remove|delete|trash|bin)/i.test(value);
-        const isEdit = (value) => /(수정|편집|edit|pencil|pen|rename|제목|title)/i.test(value);
-
-        for (const btn of buttons) {
-            const text = (btn.textContent || '').trim();
-            const aria = btn.getAttribute('aria-label') || '';
-            const title = btn.getAttribute('title') || '';
-            const data = `${btn.dataset.icon || ''} ${btn.dataset.testid || ''} ${btn.className || ''}`.trim();
-            const combined = `${text} ${aria} ${title} ${data}`.trim();
-            if (isDelete(combined)) continue;
-            if (isEdit(combined)) return btn;
-        }
-
-        for (const btn of buttons) {
-            const aria = btn.getAttribute('aria-label') || '';
-            const title = btn.getAttribute('title') || '';
-            const data = `${btn.dataset.icon || ''} ${btn.dataset.testid || ''} ${btn.className || ''}`.trim();
-            const svgTitle = btn.querySelector('svg title')?.textContent || '';
-            const combined = `${aria} ${title} ${data} ${svgTitle}`.trim();
-            if (isDelete(combined)) continue;
-            if (isEdit(combined)) return btn;
-        }
-
-        return null;
-    }
-
-    function findTitleDisplay(card) {
-        const candidates = card.querySelectorAll('[contenteditable], [class*="title"], h1, h2, h3');
-        for (const node of candidates) {
-            const text = (node.textContent || '').trim();
-            if (!text) continue;
-            if (text.length > 0 && text.length < 80) return node;
-        }
-        return null;
-    }
-
-    async function openTitleEditor(card) {
-        const editBtn = findEditButton(card);
-        if (editBtn) {
-            editBtn.click();
-            await sleep(120);
-            return true;
-        }
-        const titleDisplay = findTitleDisplay(card);
-        if (titleDisplay) {
-            titleDisplay.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
-            await sleep(120);
-            return true;
-        }
-        return false;
-    }
-
-    function findTitleField(card) {
-        const candidates = findFields(card, LABELS.title, 'input,textarea');
-        if (candidates.length) return candidates[0];
-        const fallback = card.querySelector('input[type="text"], input:not([type])');
-        return fallback || null;
-    }
-
-    function findSituationField(card) {
-        const candidates = findFields(card, LABELS.situation, 'textarea,input');
-        return candidates[0] || null;
-    }
-
-    function findHintField(card) {
-        const candidates = findFields(card, LABELS.hint, 'textarea,input');
-        return candidates[0] || null;
-    }
-
-    function getMaxLength(el, card, fallback) {
-        const attr = parseInt(el.getAttribute('maxlength') || el.getAttribute('maxLength') || el.maxLength, 10);
-        if (Number.isFinite(attr) && attr > 0 && attr < 10000) return attr;
-        const describedBy = el.getAttribute('aria-describedby');
-        if (describedBy) {
-            const node = document.getElementById(describedBy);
-            if (node) {
-                const match = node.textContent.match(/\/\s*(\d+)/);
-                if (match) return parseInt(match[1], 10);
-            }
-        }
-        if (card) {
-            const counters = Array.from(card.querySelectorAll('span,div'));
-            for (const node of counters) {
-                const match = (node.textContent || '').match(/0\s*\/\s*(\d{1,3})/);
-                if (match) return parseInt(match[1], 10);
-            }
-        }
-        return fallback;
-    }
-
-    function collectCards() {
+    function collectFields() {
         const scope = findSectionRoot();
+        const titleFields = findFields(scope, LABELS.title, 'input,textarea');
         const situationFields = findFields(scope, LABELS.situation, 'textarea,input');
-        const cards = [];
-        const seen = new Set();
-        situationFields.forEach((field) => {
-            const card = findCardRoot(field);
-            if (card && !seen.has(card)) {
-                seen.add(card);
-                cards.push(card);
-            }
-        });
-        return cards;
+        const hintFields = findFields(scope, LABELS.hint, 'textarea,input');
+        return { titleFields, situationFields, hintFields };
     }
 
     function parsePromptInput(rawText) {
@@ -235,65 +118,7 @@
         return { mode: 'single', text: trimmed };
     }
 
-    function splitByComma(text, maxLen) {
-        if (!text) return { chunk: '', rest: '' };
-        if (text.length <= maxLen) return { chunk: text, rest: '' };
-
-        const separators = [',', '，', '、'];
-        const findLastSeparator = (value) => {
-            let lastIndex = -1;
-            for (const sep of separators) {
-                const idx = value.lastIndexOf(sep);
-                if (idx > lastIndex) lastIndex = idx;
-            }
-            return lastIndex;
-        };
-
-        const boundaryRegex = /[,，、]\s*\d+\s*=/g;
-        let boundaryIndex = -1;
-        let match;
-        while ((match = boundaryRegex.exec(text)) !== null) {
-            if (match.index >= maxLen) break;
-            boundaryIndex = match.index;
-        }
-        if (boundaryIndex > -1) {
-            const chunk = text.slice(0, boundaryIndex).trimEnd();
-            const rest = text.slice(boundaryIndex + 1).trimStart();
-            if (chunk) return { chunk, rest };
-        }
-
-        const slice = text.slice(0, maxLen);
-        const lastIndex = findLastSeparator(slice);
-        const restRaw = text.slice(slice.length);
-
-        const trailingDigits = slice.match(/(\d+)\s*$/);
-        const restStartsWithEquals = restRaw.trimStart().startsWith('=');
-        if (trailingDigits && restStartsWithEquals && lastIndex > -1) {
-            const chunk = slice.slice(0, lastIndex).trimEnd();
-            const rest = text.slice(lastIndex + 1).trimStart();
-            if (chunk) return { chunk, rest };
-        }
-
-        const quoteCount = (slice.match(/"/g) || []).length;
-        if (quoteCount % 2 === 1 && lastIndex > -1) {
-            const chunk = slice.slice(0, lastIndex).trimEnd();
-            const rest = text.slice(lastIndex + 1).trimStart();
-            if (chunk) return { chunk, rest };
-        }
-
-        if (lastIndex > -1) {
-            const hasTrailing = slice.slice(lastIndex + 1).trim().length > 0;
-            if (hasTrailing) {
-                const chunk = slice.slice(0, lastIndex).trimEnd();
-                const rest = text.slice(lastIndex + 1).trimStart();
-                if (chunk) return { chunk, rest };
-            }
-        }
-
-        return { chunk: slice, rest: text.slice(slice.length) };
-    }
-
-    async function runAutofill() {
+    function runAutofill() {
         if (!state.enabled) {
             alert('Autofill is disabled.');
             return;
@@ -304,64 +129,36 @@
             return;
         }
 
-        const cards = collectCards();
-        if (!cards.length) {
+        const { titleFields, situationFields, hintFields } = collectFields();
+        const total = Math.max(titleFields.length, situationFields.length);
+        if (!total) {
             alert('No matching fields found. You may need to adjust selectors.');
             return;
         }
 
-        const targets = [];
-        for (const card of cards) {
-            let titleEl = findTitleField(card);
-            if (!titleEl) {
-                await openTitleEditor(card);
-                titleEl = findTitleField(card);
+        const limit = Math.min(total, 50);
+        for (let i = 0; i < limit; i += 1) {
+            const titleEl = titleFields[i] || null;
+            const situationEl = situationFields[i] || null;
+            const hintEl = hintFields[i] || null;
+
+            let titleText = '';
+            let situationText = '';
+            if (payload.mode === 'list') {
+                const item = payload.items[i] || {};
+                titleText = item.title || item.name || item.prompt || '';
+                situationText = item.situation || item.prompt || item.text || '';
+            } else {
+                titleText = payload.text;
+                situationText = payload.text;
             }
-            const situationEl = findSituationField(card);
-            if (titleEl) targets.push({ kind: 'title', el: titleEl, card });
-            if (situationEl) targets.push({ kind: 'situation', el: situationEl, card });
-            const hintEl = findHintField(card);
+
+            if (titleEl && titleText) setNativeValue(titleEl, titleText);
+            if (situationEl && situationText) setNativeValue(situationEl, situationText);
             if (hintEl) setNativeValue(hintEl, '');
         }
 
-        if (payload.mode === 'list') {
-            const limit = Math.min(cards.length, 50);
-            for (let i = 0; i < limit; i += 1) {
-                const item = payload.items[i] || {};
-                const card = cards[i];
-                const titleEl = findTitleField(card);
-                const situationEl = findSituationField(card);
-                const titleText = item.title || item.name || item.prompt || '';
-                const situationText = item.situation || item.prompt || item.text || '';
-                if (titleEl && titleText) setNativeValue(titleEl, titleText);
-                if (situationEl && situationText) setNativeValue(situationEl, situationText);
-            }
-            alert(`Autofill done: ${limit} items.`);
-            return;
-        }
-
-        let remaining = payload.text || '';
-        const filledTargets = [];
-        for (const target of targets) {
-            if (!remaining) break;
-            const fallback = target.kind === 'title' ? 20 : 50;
-            const maxLen = getMaxLength(target.el, target.card, fallback);
-            const split = splitByComma(remaining, maxLen);
-            const chunk = split.chunk;
-            remaining = split.rest;
-            if (chunk) {
-                setNativeValue(target.el, chunk);
-                filledTargets.push(target);
-            }
-        }
-
-        if (remaining) {
-            alert('모든 칸을 채웠지만 아직 텍스트가 남았습니다. 이미지/칸을 더 추가해주세요.');
-        } else if (filledTargets.length) {
-            alert(`Autofill done: ${filledTargets.length} fields.`);
-        } else {
-            alert('채울 수 있는 칸을 찾지 못했습니다.');
-        }
+        alert(`Autofill done: ${limit} items.`);
     }
 
     function buildPanel() {
@@ -400,10 +197,7 @@
         runBtn.addEventListener('click', () => {
             state.prompt = promptEl.value;
             saveState();
-            runAutofill().catch((err) => {
-                console.error(err);
-                alert('Autofill 오류가 발생했습니다.');
-            });
+            runAutofill();
         });
 
         saveBtn.addEventListener('click', () => {

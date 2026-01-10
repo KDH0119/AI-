@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { Blob } = require('buffer');
+const multer = require('multer');
+const sharp = require('sharp');
 const CHAT_MODEL_CONFIG = {
     'gemini-3-pro-preview': { label: 'Gemini 3 Pro' },
     'gemini-2.5-pro': { label: 'Gemini 2.5 Pro' }
@@ -9,6 +11,10 @@ const CHAT_MODEL_CONFIG = {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 100 * 1024 * 1024 }
+});
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -145,6 +151,32 @@ app.post('/api/photoroom/segment', async (req, res) => {
         });
     } catch (error) {
         console.error('PhotoRoom Proxy Error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==========================================
+// Lossless WebP 변환 프록시 (로컬)
+// ==========================================
+app.post('/api/tools/convert-webp', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'file이 필요합니다.' });
+        }
+
+        let effort = parseInt(req.body?.effort, 10);
+        if (!Number.isFinite(effort)) effort = 6;
+        effort = Math.min(6, Math.max(0, effort));
+
+        const webpBuffer = await sharp(req.file.buffer, { failOnError: false })
+            .rotate()
+            .webp({ lossless: true, effort, quality: 100 })
+            .toBuffer();
+
+        res.set('Content-Type', 'image/webp');
+        res.send(webpBuffer);
+    } catch (error) {
+        console.error('WebP Convert Error:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
